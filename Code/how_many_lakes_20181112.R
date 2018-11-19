@@ -7,6 +7,11 @@ rm(list=ls())
 
 library(LAGOSNE)
 library(lubridate)
+library(rgdal)
+library(dplyr)
+
+states<-readOGR("~/Box Sync/NSF EAGER Synchrony/MiscData/statesp020.shp")
+states<-states[!states@data$STATE %in% c("Alaska","Hawaii","Puerto Rico"),]
 
 #lagosne_get(version="1.087.1") #only need to run once or to update to new database version
 
@@ -14,6 +19,11 @@ dt<-lagosne_load(version = "1.087.1")
 
 vars.raw<-lagosne_select(table="epi_nutr", vars=c("lagoslakeid","chla","sampledate"))
 coords<-lagosne_select(table="locus", vars=c("lagoslakeid","nhd_lat","nhd_long"))
+
+
+test<-lagosne_select(table="epi_nutr", vars=c("colora","colort","colora_labmethodname","colort_labmethodname"))
+test<-test[complete.cases(test),]
+
 
 vars<-left_join(vars.raw,coords)
 
@@ -56,7 +66,9 @@ for(id in unique(vars$lagoslakeid)){
 }
 
 d20consec<-vars[vars$lagoslakeid %in% check.20consec,]
-plot(d20consec$nhd_long,d20consec$nhd_lat)
+
+plot(states, main="lakes with 20 consecutive years of observations")
+points(d20consec$nhd_long,d20consec$nhd_lat, pch=".", cex=3, col="red")
 
 ####################################################################################
 ## Take a closer look at lakes with at least 20 observations
@@ -96,7 +108,8 @@ sum(summdf.20obs[,5]==1 & summdf.20obs[,6]==12)
 summdf.20obs.allyr<-summdf.20obs[summdf.20obs[,5]==1 & summdf.20obs[,6]==12 & summdf.20obs[,2]>11,]
 
 d20obs.allyr<-vars[vars$lagoslakeid %in% summdf.20obs.allyr[,"lagoslakeid"],]
-plot(d20obs.allyr$nhd_long,d20obs.allyr$nhd_lat)
+plot(states, main="20 observations, year-round data")
+points(d20obs.allyr$nhd_long,d20obs.allyr$nhd_lat, pch=".",cex=3, col="red")
 
 ####################################################################################
 ## Take a closer look at lakes that have been sampled for at least 20 consecutive years
@@ -131,7 +144,9 @@ colMeans(summdf.20consec, na.rm=T)
 write.csv(summdf.20consec, file="~/Box Sync/NSF EAGER Synchrony/lake_sampling_info_20consec.csv", row.names=F)
 
 d20consec<-vars[vars$lagoslakeid %in% summdf.20consec[,"lagoslakeid"],]
-plot(d20consec$nhd_long,d20consec$nhd_lat)
+
+plot(states, main="records in 20 consecutive years")
+points(d20consec$nhd_long,d20consec$nhd_lat, pch=".", cex=3, col="red")
 
 
 #########################################################################
@@ -141,7 +156,7 @@ plot(d20consec$nhd_long,d20consec$nhd_lat)
 # 
 # A data frame with 289482 observations of 93 variables:
 #   
-#   eventida1087: unique combination of programid, lakeid, and date for each sampling event in LAGOSNE
+# eventida1087: unique combination of programid, lakeid, and date for each sampling event in LAGOSNE
 # lagoslakeid: unique integer identifier for each lake in LAGOSNE
 # programname: name of the sampling/monitoring program that collected the data
 # programtype: categorical description of the type of sampling/monitoring effort (Federal Agency, LTER = Long Term Ecological Research program, National Survey Program, Non-Profit Agency, State Agency, State Agency/Citizen Monitoring Program, State Agency/University/Citizen Monitoring Program, State Agency/Citizen Monitoring Program, Tribal Agency, University)
