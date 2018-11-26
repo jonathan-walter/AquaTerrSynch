@@ -29,6 +29,8 @@ vars<-left_join(vars.raw,coords)
 
 vars<-vars[complete.cases(vars),] #remove obs with missing data
 
+lim.x=c(floor(min(coords$nhd_long)),ceiling(max(coords$nhd_long)))
+lim.y<-c(floor(min(coords$nhd_lat)),ceiling(max(coords$nhd_lat)))
 
 ###############################################################################
 ## Do some first-pass data checks
@@ -67,7 +69,7 @@ for(id in unique(vars$lagoslakeid)){
 
 d20consec<-vars[vars$lagoslakeid %in% check.20consec,]
 
-plot(states, main="lakes with 20 consecutive years of observations")
+plot(states, main="lakes with 20 consecutive years of chla observations", xlim=lim.x, ylim=lim.y)
 points(d20consec$nhd_long,d20consec$nhd_lat, pch=".", cex=3, col="red")
 
 ####################################################################################
@@ -108,7 +110,7 @@ sum(summdf.20obs[,5]==1 & summdf.20obs[,6]==12)
 summdf.20obs.allyr<-summdf.20obs[summdf.20obs[,5]==1 & summdf.20obs[,6]==12 & summdf.20obs[,2]>11,]
 
 d20obs.allyr<-vars[vars$lagoslakeid %in% summdf.20obs.allyr[,"lagoslakeid"],]
-plot(states, main="20 observations, year-round data")
+plot(states, main="20 chla observations, year-round data", xlim=lim.x, ylim=lim.y)
 points(d20obs.allyr$nhd_long,d20obs.allyr$nhd_lat, pch=".",cex=3, col="red")
 
 ####################################################################################
@@ -145,8 +147,8 @@ write.csv(summdf.20consec, file="~/Box Sync/NSF EAGER Synchrony/lake_sampling_in
 
 d20consec<-vars[vars$lagoslakeid %in% summdf.20consec[,"lagoslakeid"],]
 
-plot(states, main="records in 20 consecutive years")
-points(d20consec$nhd_long,d20consec$nhd_lat, pch=".", cex=3, col="red")
+# plot(states, main="records in 20 consecutive years", xlim=lim.x, ylim=lim.y)
+# points(d20consec$nhd_long,d20consec$nhd_lat, pch=".", cex=3, col="red")
 
 
 #########################################################################
