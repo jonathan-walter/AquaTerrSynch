@@ -19,11 +19,18 @@ states<-states[!states@data$STATE %in% c("Alaska","Hawaii","Puerto Rico"),]
 
 dt<-lagosne_load(version = "1.087.1")
 
-vars.raw<-lagosne_select(table="epi_nutr", vars=c("lagoslakeid","chla","sampledate","colora","colort",
-                                                  "doc","no2no3","tn","tp","secchi"))
+vars.raw<-lagosne_select(table="epi_nutr", vars=c("lagoslakeid","sampledate","chla","colora","colort",
+                                                  "doc","no2no3","tn","tp"))
 secchi<-lagosne_select(table="secchi",vars=c("lagoslakeid","sampledate","secchi"))
 coords<-lagosne_select(table="locus", vars=c("lagoslakeid","nhd_lat","nhd_long"))
 names<-lagosne_select(table="locus", vars=c("lagoslakeid","gnis_name"))
+
+#merge secchi data with other vars
+vars.raw$lakedate<-paste(vars.raw$lagoslakeid,vars.raw$sampledate,sep="_")
+secchi$lakedate<-paste(secchi$lagoslakeid,secchi$sampledate,sep="_")
+
+vars.raw<-left_join(vars.raw,secchi[,3:4],by="lakedate")
+vars.raw[,-10]
 
 vars<-left_join(vars.raw,coords)
 
@@ -113,6 +120,8 @@ colnames(summdf.20obs)<-c("lagoslakeid","no.yrs.chla","avg.obs_yr.chla","sd.obs_
 
 colMeans(summdf.20obs, na.rm=T)
 
+summdf.20obs<-merge(summdf.20obs, names, by="lagoslakeid")
+
 write.csv(summdf.20obs, file="~/Box Sync/NSF EAGER Synchrony/Data Availability Studies/lake_sampling_info_20obs.csv", row.names=F)
 
 #how many lakes may have year-round data?
@@ -164,6 +173,8 @@ colnames(summdf.20consec)<-c("lagoslakeid","no.yrs.chla","avg.obs_yr.chla","sd.o
                              "prNA.colora","prNA.colort","prNA.doc","prNA.no2no3","prNA.tn","prNA.tp","prNA.secchi")
 
 colMeans(summdf.20consec, na.rm=T)
+
+summdf.20consec<-merge(summdf.20consec, names, by="lagoslakeid")
 
 write.csv(summdf.20consec, file="~/Box Sync/NSF EAGER Synchrony/Data Availability Studies/lake_sampling_info_20consec.csv", row.names=F)
 
