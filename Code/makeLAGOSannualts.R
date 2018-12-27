@@ -20,7 +20,7 @@
 #and each element is a data frame in which columns are variables in 'vars' and rows correspond
 #to years.
 
-makeLAGOSannualts<-function(lakes, getvars=c("chla"), aggfun="gsmean",timespan=NULL,
+makeLAGOSannualts<-function(lakes, getvars=c("chla"), aggfun="gsmean", timespan=NULL,
                             minmos=3, minobs=5, lagosversion="1.087.1")
 {
   library(dplyr) #load library dependencies
@@ -33,13 +33,13 @@ makeLAGOSannualts<-function(lakes, getvars=c("chla"), aggfun="gsmean",timespan=N
   
   dt<-lagosne_load(version = lagosversion)
   
-  epidat<-lagosne_select(table="epi_nutr", vars=getvars) #pull lake ecological data
+  epidat<-lagosne_select(table="epi_nutr", vars=getvars[getvars != "secchi"]) #pull lake ecological data
   info<-lagosne_select(table="locus", vars=c("lagoslakeid","gnis_name","nhd_lat","nhd_long")) #pull lake info
   
   if("secchi" %in% getvars){ #add secchi depth information stored in separate table
     secchi<-lagosne_select(table="secchi",vars=c("lagoslakeid","sampledate","secchi"))
     secchi$lakedate<-paste(secchi$lagoslakeid,secchi$sampledate,sep="_")
-    epidat$lakedate<-paste(vars.raw$lagoslakeid,vars.raw$sampledate,sep="_")
+    epidat$lakedate<-paste(epidat$lagoslakeid,epidat$sampledate,sep="_")
     epidat<-left_join(epidat,secchi[,3:4],by="lakedate")
     epidat<-epidat[,colnames(epidat)!="lakedate"]
     rm(secchi)
@@ -65,18 +65,29 @@ makeLAGOSannualts<-function(lakes, getvars=c("chla"), aggfun="gsmean",timespan=N
                              year(epidat.ii$sampledate)<=max(timespan),]
     }
     years<-unique(year(epidat.ii$sampledate))
-    ydat<-NULL
+    aggdat<-NULL
     for(yy in years){
-      tmpyy<-epidat[year(epidat$sampledate)==yy,]
+      ydat<-NULL
+      tmp.yy<-epidat.ii[year(epidat.ii$sampledate)==yy,]
       
       if(aggfun=="gsmean"){
         #compute variable
-        
+        for(nn in 1:ncol(tmp.yy)){
+          if(colnames(tmp.yy)[nn] %in% c("sampledate","lagoslakeid")){next}
+          if(nrow(tmp.yy)>=minobs & length(unique(month(tmp.yy$sampledate)))>=minobs){
+            ydat<-c(ydat,mean(tmp.yy[,nn], na.rm=TRUE))
+          }
+          else(ydat<-c(ydat,NA))
+        }
       }
       
+    aggdat<-cbind(aggdat,ydat)  
     }#close year loop
-    
+    rownames(aggdat)<-getvars[!getvars %in% c("sampledate","lagoslakeid")]
+    colnames(aggdat)<-years
+  lakedata[[paste0(lakeinfo$gnis_name[lakeinfo$lagoslakeid==ii])]]<-aggdat  
   }#close lake loop
   
-  return(list(lakeinfo, lakedata))
+  return(list(lakeinfo=lakeinfo, lakedata=lakedata))
 }
+
