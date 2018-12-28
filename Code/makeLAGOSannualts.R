@@ -49,7 +49,7 @@ makeLAGOSannualts<-function(lakes, getvars=c("chla"), aggfun="gsmean", timespan=
                            str_pad(date.tmp[2,],width=2,pad=0),
                            date.tmp[3,],sep="/")
   epidat$sampledate<-as.POSIXct(epidat$sampledate,format="%m/%d/%Y")
-  epidat<-epidat[month(epidat$sampledate)>=5 & month(epidat$sampledate)<=9,] #remove observations outside growing season
+  epidat<-epidat[month(epidat$sampledate)>=5 & month(epidat$sampledate)<=9,] #remove observations outside growing season -- may need to move this in future!
   
   
   lakeinfo<-info[info$lagoslakeid %in% lakes,] #extract lake information to output
@@ -64,20 +64,23 @@ makeLAGOSannualts<-function(lakes, getvars=c("chla"), aggfun="gsmean", timespan=
       epidat.ii<-epidat.ii[year(epidat.ii$sampledate)>=min(timespan) &
                              year(epidat.ii$sampledate)<=max(timespan),]
     }
-    years<-unique(year(epidat.ii$sampledate))
+    years<-min(year(epidat.ii$sampledate)):max(year(epidat.ii$sampledate))
     aggdat<-NULL
     for(yy in years){
-      ydat<-NULL
       tmp.yy<-epidat.ii[year(epidat.ii$sampledate)==yy,]
       
-      if(aggfun=="gsmean"){
-        #compute variable
-        for(nn in 1:ncol(tmp.yy)){
-          if(colnames(tmp.yy)[nn] %in% c("sampledate","lagoslakeid")){next}
-          if(nrow(tmp.yy)>=minobs & length(unique(month(tmp.yy$sampledate)))>=minobs){
-            ydat<-c(ydat,mean(tmp.yy[,nn], na.rm=TRUE))
+      if(length(tmp.yy)==0){ydat<-rep(NA, ncol(epidate.ii)-2)} 
+      else{
+        ydat<-NULL
+        if(aggfun=="gsmean"){
+          #compute variable
+          for(nn in 1:ncol(tmp.yy)){
+            if(colnames(tmp.yy)[nn] %in% c("sampledate","lagoslakeid")){next}
+            if(nrow(tmp.yy)>=minobs & length(unique(month(tmp.yy$sampledate)))>=minobs){
+              ydat<-c(ydat,mean(tmp.yy[,nn], na.rm=TRUE))
+            }
+            else(ydat<-c(ydat,NA))
           }
-          else(ydat<-c(ydat,NA))
         }
       }
       
@@ -91,3 +94,4 @@ makeLAGOSannualts<-function(lakes, getvars=c("chla"), aggfun="gsmean", timespan=
   return(list(lakeinfo=lakeinfo, lakedata=lakedata))
 }
 
+test<-makeLAGOSannualts(lakes=c(122517,25980,4664))
