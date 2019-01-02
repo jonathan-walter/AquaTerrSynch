@@ -53,6 +53,9 @@ makeLAGOSannualts<-function(lakes, getvars=c("chla"), aggfun="gsmean", timespan=
   
   
   lakeinfo<-info[info$lagoslakeid %in% lakes,] #extract lake information to output
+  lakeinfo$gnis_name<-as.character(lakeinfo$gnis_name)
+  lakeinfo$start=rep(NA,length(lakes))
+  lakeinfo$end=rep(NA,length(lakes))
   
   lakedata<-list() #initialize output list
   
@@ -64,9 +67,9 @@ makeLAGOSannualts<-function(lakes, getvars=c("chla"), aggfun="gsmean", timespan=
       epidat.ii<-epidat.ii[year(epidat.ii$sampledate)>=min(timespan) &
                              year(epidat.ii$sampledate)<=max(timespan),]
     }
-    years<-min(year(epidat.ii$sampledate)):max(year(epidat.ii$sampledate))
+    lakeyears<<-min(year(epidat.ii$sampledate)):max(year(epidat.ii$sampledate))
     aggdat<-NULL
-    for(yy in years){
+    for(yy in lakeyears){
       tmp.yy<-epidat.ii[year(epidat.ii$sampledate)==yy,]
       
       if(length(tmp.yy)==0){ydat<-rep(NA, ncol(epidate.ii)-2)} 
@@ -87,9 +90,14 @@ makeLAGOSannualts<-function(lakes, getvars=c("chla"), aggfun="gsmean", timespan=
     aggdat<-cbind(aggdat,ydat)  
     }#close year loop
     rownames(aggdat)<-getvars[!getvars %in% c("sampledate","lagoslakeid")]
-    colnames(aggdat)<-years
-  lakedata[[paste0(lakeinfo$gnis_name[lakeinfo$lagoslakeid==ii])]]<-aggdat  
+    colnames(aggdat)<-lakeyears
+    lakedata[[paste0(lakeinfo$gnis_name[lakeinfo$lagoslakeid==ii])]]<-aggdat
+    lakeinfo$start[lakes==ii]<-min(lakeyears)
+    lakeinfo$end[lakes==ii]<-max(lakeyears)
   }#close lake loop
+  
+  lakedata<-lakedata[order(names(lakedata))]
+  lakeinfo<-lakeinfo[order(lakeinfo$gnis_name),]
   
   return(list(lakeinfo=lakeinfo, lakedata=lakedata))
 }
