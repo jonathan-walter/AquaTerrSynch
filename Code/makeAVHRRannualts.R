@@ -1,28 +1,26 @@
 # Function for making AVHRR annual time series
 
 #Inputs
-#lakeinfo = a lake information data frame, as output bu 'makeLAGOSannualts,' ideally 
-# after cleaning by 'cleanLAGOSannualts'.
+#lakelist = a list containing 'lakeinfo' and 'lakeldata', as output from 'makeLAGOSannualts'
 #avhrrdata = a raster stack of annual AVHRR metrics
 #buffdist = the distance (in m) of the radius around each lake to draw terrestrial productivity information from
-#avhrrmask = a binary raster layer indicating areas to exclude from terrestial productivity sample,
-# if NULL, use all pixels within the buffer
 #aggfun = a function for spatially aggregating points within the buffer. Defaults to "mean", 
 # "median" is also available
 
 
 #Values
-#A list, consisting of "lakeinfo" and "AVHRRdata," which is, itself, a list of time series
+#Adds terrestrial ndvi data to the lake data
 
 #Details
 
-makeAVHRRannualts<-function(lakeinfo, avhrrdata, buffdist=5000, avhrrmask=NULL, aggfun="mean"){
+makeAVHRRannualts<-function(lakelist, avhrrdata, buffdist=5000, aggfun="mean"){
   
   library(raster)
   library(rgdal)
   library(sp)
   
-  avhrrout<-list()
+  lakeinfo<-lakelist$lakeinfo
+  lakedata<-lakelist$lakedata
   
   #make lake points and buffer
   lakepts<-SpatialPoints(coords=data.frame(x=lakeinfo$nhd_long,y=lakeinfo$nhd_lat),
@@ -35,7 +33,6 @@ makeAVHRRannualts<-function(lakeinfo, avhrrdata, buffdist=5000, avhrrmask=NULL, 
   for(ii in 1:nrow(lakeinfo)){
     lakebuffer.ii<-lakebuffer[ii,]
     avhrrstack.ii<-mask(avhrrdata,lakebuffer.ii)
-    if(!is.null(avhrrmask)){avhrrstack.ii<-mask(avhrrdata,avhrrmask)}
     
     if(!aggfun %in% c("mean","median")){stop("aggfun argument must be 'mean' or 'median'.")}
     else if(aggfun=="mean"){
@@ -47,10 +44,16 @@ makeAVHRRannualts<-function(lakeinfo, avhrrdata, buffdist=5000, avhrrmask=NULL, 
     # names(ts.ii)<-as.character(1989:2015)
     # ts.ii<-ts.ii[names(ts.ii) %in% lakeinfo$start[ii]:lakeinfo$end[ii]]
     
-    avhrrout[[paste0(lakeinfo$gnis_name[ii])]]<-ts.ii
+    #avhrrout[[paste0(lakeinfo$gnis_name[ii])]]<-ts.ii
+    lakeyrs<-lakeinfo$start[ii]:lakeinfo$end[ii]
+    ts.out<-rep(NA, length(lakeyrs))
+    ts.out[lakeyrs %in% 1989:2015]<-ts.ii[1989:2015 %in% lakeyrs]
+    lakedata[[ii]]<-rbind(lakedata[[ii]],ts.out)
+    rownames(lakedata[[ii]])<-c(rownames(lakedata),deparse(substitute(avhrrdata)))
+    
   }
   return(list(lakeinfo=lakeinfo, terrdata=avhrrout))
 }
 
-test3<-makeAVHRRannualts(test$lakeinfo,avhrrdata)
+#test3<-makeAVHRRannualts(test$lakeinfo,avhrrdata)
 

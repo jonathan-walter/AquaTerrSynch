@@ -25,6 +25,8 @@ cleanLAGOSannualts<-function(indat, ymin=20, maxNA=2, fill.method="median"){
   cleandat<-indat$lakedat
   cleaninfo<-indat$lakeinfo
   
+  droplakes<-NULL
+  
   for(lind in 1:length(indat$lakedata)){
     
     dat.lind<-indat$lakedata[[lind]]
@@ -33,7 +35,7 @@ cleanLAGOSannualts<-function(indat, ymin=20, maxNA=2, fill.method="median"){
     dat.lind<-t(na.trim(t(dat.lind),sides="both",is.na="any"))
     
     #check for ymin
-    droplakes<-NULL
+    
     if(diff(range(as.numeric(colnames(dat.lind)))) < ymin){
       droplakes<-c(droplakes,lind)
     }
@@ -50,9 +52,10 @@ cleanLAGOSannualts<-function(indat, ymin=20, maxNA=2, fill.method="median"){
         rle.vind<-rle(is.na(dat.lind[vind,]))
         if(any(rle.vind$lengths[rle.vind$values]>1)){
           dropvars<-c(dropvars,vind)
+          next
         }
-        if(!is.null(dropvars)){dat.lind<-dat.lind[-dropvars,]}
       }
+      if(!is.null(dropvars)){dat.lind<-dat.lind[-dropvars,]}
       
       #fill time series if sporadic NAs
       for(vind in 1:nrow(dat.lind)){
@@ -80,5 +83,5 @@ cleanLAGOSannualts<-function(indat, ymin=20, maxNA=2, fill.method="median"){
   
 }
 
-test2<-cleanLAGOSannualts(test)
+#test2<-cleanLAGOSannualts(test)
 
