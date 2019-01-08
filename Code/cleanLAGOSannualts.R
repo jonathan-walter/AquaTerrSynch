@@ -3,7 +3,7 @@
 #Arguments
 #indat =  an input data list, output from 'makeLAGOSannualts'
 #ymin = minimum time series length
-#maxNA = maximum number of missing observations
+#maxNA = maximum number of missing observations. If 0 < maxNA < 1, maxNA is the maximum proportion of NAs allowed.
 #fill.method = method for filling missing observations, currently only 'median' is implemented
 
 #Details
@@ -18,7 +18,7 @@
 #gaps.
 
 
-cleanLAGOSannualts<-function(indat, ymin=20, maxNA=2, fill.method="median"){
+cleanLAGOSannualts<-function(indat, ymin=20, maxNA=2, timespan=NULL, fill.method="median"){
   
   library(zoo)
   
@@ -27,12 +27,21 @@ cleanLAGOSannualts<-function(indat, ymin=20, maxNA=2, fill.method="median"){
   
   droplakes<-NULL
   
+  if(maxNA < 0){stop("Negative values of maxNA not allowed")}
+  
   for(lind in 1:length(indat$lakedata)){
     
     dat.lind<-indat$lakedata[[lind]]
     
+    if(!is.null(timespan)){ #if necessary, limit data to selected timespan
+      dat.lind<-dat.lind[,colnames(dat.lind)>=min(timespan) &
+                           colnames(dat.lind)<=max(timespan)]
+    }
+    
     #Drop leading or trailing NAs
-    dat.lind<-t(na.trim(t(dat.lind),sides="both",is.na="any"))
+    dat.lind<-t(na.trim(t(dat.lind),sides="both",is.na="all"))
+    
+    if(maxNA < 1){maxNA<-ceiling(ncol(dat.lind)*maxNA)}
     
     #check for ymin
     
@@ -61,7 +70,7 @@ cleanLAGOSannualts<-function(indat, ymin=20, maxNA=2, fill.method="median"){
       for(vind in 1:nrow(dat.lind)){
         if(fill.method!="median"){stop("only fill.method=median is implemented")}
         else{
-          dat.lind[vind,is.na(dat.lind[vind,])]<-median(dat.lind[vind], na.rm=T)
+          dat.lind[vind,is.na(dat.lind[vind,])]<-median(dat.lind[vind,], na.rm=T)
         }
       }
     }

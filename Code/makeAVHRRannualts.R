@@ -48,11 +48,12 @@ makeAVHRRannualts<-function(lakelist, avhrrdata, buffdist=5000, aggfun="mean"){
     lakeyrs<-lakeinfo$start[ii]:lakeinfo$end[ii]
     ts.out<-rep(NA, length(lakeyrs))
     ts.out[lakeyrs %in% 1989:2015]<-ts.ii[1989:2015 %in% lakeyrs]
+    varnames<-rownames(lakedata[[ii]])
     lakedata[[ii]]<-rbind(lakedata[[ii]],ts.out)
-    rownames(lakedata[[ii]])<-c(rownames(lakedata),deparse(substitute(avhrrdata)))
+    rownames(lakedata[[ii]])<-c(varnames,deparse(substitute(avhrrdata)))
     
   }
-  return(list(lakeinfo=lakeinfo, terrdata=avhrrout))
+  return(list(lakeinfo=lakeinfo, lakedata=lakedata))
 }
 
 #test3<-makeAVHRRannualts(test$lakeinfo,avhrrdata)

@@ -5,6 +5,8 @@ rm(list=ls())
 setwd("~/Box Sync/NSF EAGER Synchrony/")
 
 library(wsyn)
+library(raster)
+library(rgdal)
 
 source("~/GitHub/AquaTerrSynch/Code/makeLAGOSannualts.R")
 source("~/GitHub/AquaTerrSynch/Code/cleanLAGOSannualts.R")
@@ -30,7 +32,7 @@ selectIDs<-c(
 getvars<-c("chla","colora","no2no3","tn","tp","secchi")
 
 #get the LAGOS data
-lagos.raw<-makeLAGOSannualts(selectIDs, getvars, aggfun="gsmean")
+lagos.raw<-makeLAGOSannualts(selectIDs, getvars, aggfun="gsmean", timespan=NULL)
 
 #manually add the Iowa data in the same format
 
@@ -66,8 +68,11 @@ maxndvi<-mask(maxndvi,watermask,maskvalue=0)
 avgndvi<-mask(avgndvi,watermask,makevalue=0)
 
 alllakes.raw<-makeAVHRRannualts(alllakes.raw, accndvi)
+alllakes.raw<-makeAVHRRannualts(alllakes.raw, maxndvi)
+alllakes.raw<-makeAVHRRannualts(alllakes.raw, avgndvi)
 
 
 #Data filtering
-#alllakes.cln<-cleanLAGOSannualts(alllakes.raw)
+alllakes.cln<-cleanLAGOSannualts(alllakes.raw, timespan=c(1989,2015), ymin=15, maxNA=0.1)
 
+save(alllakes.cln, file="PrelimCaseStudyData_20190108.RData")
