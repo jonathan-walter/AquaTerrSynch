@@ -88,7 +88,7 @@ cleanLAGOSannualts<-function(indat, ymin=20, maxNA=2, timespan=NULL, fill.method
     cleaninfo$end[ii]<-max(as.numeric(colnames(cleandat[[ii]])))
   }
   
-  return(list(lakeinfo=cleaninfo,lakedat=cleandat,cleaned=TRUE))
+  return(list(lakeinfo=cleaninfo,lakedata=cleandat,cleaned=TRUE))
   
 }
 

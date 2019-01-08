@@ -12,6 +12,7 @@ source("~/GitHub/AquaTerrSynch/Code/makeLAGOSannualts.R")
 source("~/GitHub/AquaTerrSynch/Code/cleanLAGOSannualts.R")
 source("~/GitHub/AquaTerrSynch/Code/makeAVHRRannualts.R")
 source("~/GitHub/AquaTerrSynch/Code/makeIowaResannualts.R")
+source("~/GitHub/AquaTerrSynch/Code/AquaTerrSynchPairCoh.R")
 
 ## ----------------------------------------------------------------------
 ## Data input, formatting, and cleaning
@@ -71,8 +72,19 @@ alllakes.raw<-makeAVHRRannualts(alllakes.raw, accndvi)
 alllakes.raw<-makeAVHRRannualts(alllakes.raw, maxndvi)
 alllakes.raw<-makeAVHRRannualts(alllakes.raw, avgndvi)
 
+rm(accndvi,maxndvi,avgndvi,watermask)
 
 #Data filtering
 alllakes.cln<-cleanLAGOSannualts(alllakes.raw, timespan=c(1989,2015), ymin=15, maxNA=0.1)
 
-save(alllakes.cln, file="PrelimCaseStudyData_20190108.RData")
+save(alllakes.cln, file="./Interannual Synchrony/PrelimCaseStudyData_20190108.RData") #save the data so we don't need to replicate some long-ish data processing steps
+
+# ------------------------------------------------------------------
+# Run some analyses
+st<-c(2,4)
+lt<-c(4,12)
+
+cohres.st<-AquaTerrSynchPairCoh(alllakes.cln,band=st)
+cohres.lt<-AquaTerrSynchPairCoh(alllakes.cln,band=lt)
+
+save(list("cohres.lt","cohres.st"),file="./Interannual Synchrony/CoherenceMatrices_PrelimCaseStudy_20190108.RData")
