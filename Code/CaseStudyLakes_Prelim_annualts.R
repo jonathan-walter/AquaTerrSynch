@@ -83,8 +83,10 @@ save(alllakes.cln, file="./Interannual Synchrony/PrelimCaseStudyData_20190108.RD
 # Run some analyses
 st<-c(2,4)
 lt<-c(4,12)
+at<-c(0,Inf)
 
 cohres.st<-AquaTerrSynchPairCoh(alllakes.cln,band=st)
 cohres.lt<-AquaTerrSynchPairCoh(alllakes.cln,band=lt)
+cohres.at<-AquaTerrSynchPairCoh(alllakes.cln,band=at)
 
-save(list=c("cohres.lt","cohres.st"),file="./Interannual Synchrony/CoherenceMatrices_PrelimCaseStudy_20190108.RData")
+save(list=c("cohres.lt","cohres.st","cohres.at"),file="./Interannual Synchrony/CoherenceMatrices_PrelimCaseStudy_20190108.RData")
