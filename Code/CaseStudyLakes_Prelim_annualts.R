@@ -87,4 +87,4 @@ lt<-c(4,12)
 cohres.st<-AquaTerrSynchPairCoh(alllakes.cln,band=st)
 cohres.lt<-AquaTerrSynchPairCoh(alllakes.cln,band=lt)
 
-save(list("cohres.lt","cohres.st"),file="./Interannual Synchrony/CoherenceMatrices_PrelimCaseStudy_20190108.RData")
+save(list=c("cohres.lt","cohres.st"),file="./Interannual Synchrony/CoherenceMatrices_PrelimCaseStudy_20190108.RData")

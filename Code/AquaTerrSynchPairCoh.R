@@ -56,5 +56,5 @@ AquaTerrSynchPairCoh<-function(datalist, band, norm="powall", sigmethod="fast", 
     cohres[[paste0(names(lakedata)[lind])]]<-list(cohmat=cohmat,phimat=phimat,sigmat=sigmat)
     
   }
-  return(list(lakeinfo,cohres))
+  return(list(lakeinfo=lakeinfo,cohres=cohres))
 }
