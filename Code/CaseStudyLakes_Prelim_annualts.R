@@ -66,7 +66,7 @@ watermask<-nlcdwater<0.05
 
 accndvi<-mask(accndvi,watermask,maskvalue=0) #mask out pixels that have too much water in them
 maxndvi<-mask(maxndvi,watermask,maskvalue=0)
-avgndvi<-mask(avgndvi,watermask,makevalue=0)
+avgndvi<-mask(avgndvi,watermask,maskvalue=0)
 
 alllakes.raw<-makeAVHRRannualts(alllakes.raw, accndvi)
 alllakes.raw<-makeAVHRRannualts(alllakes.raw, maxndvi)
