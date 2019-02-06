@@ -57,12 +57,12 @@ st<-c(2,4) #Define a timescale band for the coherence analyses. These are short 
 lt<-c(4,12) #Others are commented out to preserve what speed we can for this example
 at<-c(0,Inf)
 
-cohres.st<-AquaTerrSynchPairCoh(IowaALM.cln,band=st)
-cohres.lt<-AquaTerrSynchPairCoh(IowaALM.cln,band=lt)
-cohres.at<-AquaTerrSynchPairCoh(IowaALM.cln,band=at)
+cohres.st<-AquaTerrSynchPairCoh(IowaALM.cln,band=st,norm="phase",sigmethod="fftsurrog12")
+cohres.lt<-AquaTerrSynchPairCoh(IowaALM.cln,band=lt,norm="phase",sigmethod="fftsurrog12")
+cohres.at<-AquaTerrSynchPairCoh(IowaALM.cln,band=at,norm="phase",sigmethod="fftsurrog12")
 
 #again, saving (and loading) objects that take a long time to generate
-save(list=c("cohres.lt","cohres.st","cohres.at"),file="./Interannual Synchrony/CoherenceMatrices_IowaALM_20190116.RData")
+save(list=c("cohres.lt","cohres.st","cohres.at"),file="./Interannual Synchrony/PhaseCoherenceMatrices_IowaALM_20190117.RData")
 #load("./Interannual Synchrony/CoherenceMatrices_IowaALM_20190116.RData")
 
 # ------------------------------------------------------------------
@@ -71,7 +71,7 @@ save(list=c("cohres.lt","cohres.st","cohres.at"),file="./Interannual Synchrony/C
 source("~/GitHub/AquaTerrSynch/Code/plotCoherenceMatrices.R")
 
 # loop through the short timescales stuff
-pdf(file="IowaALM_CoherenceMatrices_ts2_4.pdf", onefile=T)
+pdf(file="IowaALM_PhaseCoherenceMatrices_ts2_4.pdf", onefile=T)
 for(lind in 1:length(cohres.st$cohres)){
   plotCoherenceMatrices(cohres.st$cohres[[lind]],
                         title=names(cohres.st$cohres)[lind],
@@ -80,7 +80,7 @@ for(lind in 1:length(cohres.st$cohres)){
 dev.off()
 
 # loop through the long timescales stuff
-pdf(file="IowaALM_CoherenceMatrices_ts4_12.pdf", onefile=T)
+pdf(file="IowaALM_PhaseCoherenceMatrices_ts4_12.pdf", onefile=T)
 for(lind in 1:length(cohres.lt$cohres)){
   plotCoherenceMatrices(cohres.lt$cohres[[lind]],
                         title=names(cohres.lt$cohres)[lind],
@@ -89,7 +89,7 @@ for(lind in 1:length(cohres.lt$cohres)){
 dev.off()
 
 # loop through the all timescales stuff
-pdf(file="IowaALM_CoherenceMatrices_allts.pdf", onefile=T)
+pdf(file="IowaALM_PhaseCoherenceMatrices_allts.pdf", onefile=T)
 for(lind in 1:length(cohres.at$cohres)){
   plotCoherenceMatrices(cohres.at$cohres[[lind]],
                         title=names(cohres.at$cohres)[lind],
