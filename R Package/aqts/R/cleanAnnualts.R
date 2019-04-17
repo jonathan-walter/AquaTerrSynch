@@ -43,6 +43,11 @@ cleanAnnualts<-function(indat, ymin=20, maxNA=2, timespan=NULL, fill.method="med
     
     dat.lind<-indat$lakedata[[lind]]
     
+    if(all(is.na(dat.lind))){
+      droplakes<-c(droplakes,lind)
+      next
+    }
+    
     if(!is.null(timespan)){ #if necessary, limit data to selected timespan
       dat.lind<-dat.lind[,colnames(dat.lind)>=min(timespan) &
                            colnames(dat.lind)<=max(timespan)]
@@ -55,7 +60,7 @@ cleanAnnualts<-function(indat, ymin=20, maxNA=2, timespan=NULL, fill.method="med
     
     #check for ymin
     
-    if(diff(range(as.numeric(colnames(dat.lind)))) < ymin){
+    if(diff(range(as.numeric(colnames(dat.lind)))) < (ymin-1)){
       droplakes<-c(droplakes,lind)
     }
     
@@ -76,6 +81,11 @@ cleanAnnualts<-function(indat, ymin=20, maxNA=2, timespan=NULL, fill.method="med
       }
       if(!is.null(dropvars)){dat.lind<-dat.lind[-dropvars,]}
       
+      if(nrow(dat.lind)==0){
+        droplakes<-c(droplakes, lind)
+        next
+      }
+      
       #fill time series if sporadic NAs
       for(vind in 1:nrow(dat.lind)){
         if(fill.method!="median"){stop("only fill.method=median is implemented")}
@@ -87,6 +97,7 @@ cleanAnnualts<-function(indat, ymin=20, maxNA=2, timespan=NULL, fill.method="med
     cleandat[[lind]]<-dat.lind
     if(length(dat.lind)==0){droplakes<-c(droplakes, lind)}
   }
+  
   if(!is.null(droplakes)){
     cleandat<-cleandat[-droplakes]
     cleaninfo<-cleaninfo[-droplakes,]

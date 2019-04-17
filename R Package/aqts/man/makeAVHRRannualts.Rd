@@ -33,7 +33,7 @@ Nope.
 
 }
 \seealso{
-\code{\link{makeAVHRRnnualts}}, \code{\link{makeIowaALMannualts}}
+\code{\link{addAVHRRnnualts}}, \code{\link{makeIowaALMannualts}}
 }
 \author{
 Jonathan Walter, \email{jaw3es@virginia.edu}

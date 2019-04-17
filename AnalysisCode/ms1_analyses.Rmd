@@ -1,0 +1,32 @@
+---
+title: 'Q1: Are lake and terrestrial primary productivity coherent?'
+author: "Jonathan Walter, Grace Wilkinson, Rachel Fleck, Michael Pace"
+date: "4/17/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(aqts)
+library(wsyn)
+library(rgdal)
+library(LAGOSNE)
+
+rm(list=ls())
+
+```
+
+# Data important and formatting
+
+```{r data import and formatting, echo=TRUE}
+
+lakes_to_get<-read.csv("~/GitHub/AquaTerrSynch/AnalysisCode/lakes20yrs_chla.csv")$x
+
+lagoslakes.raw<-makeLAGOSannualts(lakes_to_get, tsvars=c("chla"), minmos=3, minobs=3)
+lagoslakes.cln<-cleanAnnualts(lagoslakes.raw) #69 lakes here
+
+
+
+
+```

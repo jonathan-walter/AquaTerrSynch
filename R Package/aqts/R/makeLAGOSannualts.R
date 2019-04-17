@@ -38,14 +38,14 @@ makeLAGOSannualts<-function(lakes, tsvars=c("chla"), infovars=NULL, aggfun="gsme
   
   dt<-lagosne_load(version = lagosversion)
   
-  tsvars<-unique(c("lagoslakeid","sampledate",getvars)) #makesure lagoslakeid and sampledate are always pulled
+  tsvars<-unique(c("lagoslakeid","sampledate",tsvars)) #makesure lagoslakeid and sampledate are always pulled
   
   infovars<-unique(c("lagoslakeid","gnis_name","nhd_lat","nhd_long", infovars)) #make sure some vars are always pulled
   
-  epidat<-lagosne_select(table="epi_nutr", vars=getvars[getvars != "secchi"]) #pull lake ecological data
+  epidat<-lagosne_select(table="epi_nutr", vars=tsvars[tsvars != "secchi"]) #pull lake ecological data
   info<-lagosne_select(table="locus", vars=infovars) #pull lake info
   
-  if("secchi" %in% getvars){ #add secchi depth information stored in separate table
+  if("secchi" %in% tsvars){ #add secchi depth information stored in separate table
     secchi<-lagosne_select(table="secchi",vars=c("lagoslakeid","sampledate","secchi"))
     secchi$lakedate<-paste(secchi$lagoslakeid,secchi$sampledate,sep="_")
     epidat$lakedate<-paste(epidat$lagoslakeid,epidat$sampledate,sep="_")
@@ -100,9 +100,9 @@ makeLAGOSannualts<-function(lakes, tsvars=c("chla"), infovars=NULL, aggfun="gsme
     aggdat<-cbind(aggdat,ydat)  
     }#close year loop
     aggdat[is.nan(aggdat)]<-NA
-    rownames(aggdat)<-getvars[!getvars %in% c("sampledate","lagoslakeid")]
+    rownames(aggdat)<-tsvars[!tsvars %in% c("sampledate","lagoslakeid")]
     colnames(aggdat)<-lakeyears
-    lakedata[[paste0(lakeinfo$gnis_name[lakeinfo$lagoslakeid==ii])]]<-aggdat
+    lakedata[[paste0(ii)]]<-aggdat
     lakeinfo$start[lakeinfo$lagoslakeid==ii]<-min(lakeyears)
     lakeinfo$end[lakeinfo$lagoslakeid==ii]<-max(lakeyears)
   }#close lake loop
@@ -110,4 +110,3 @@ makeLAGOSannualts<-function(lakes, tsvars=c("chla"), infovars=NULL, aggfun="gsme
   return(list(lakeinfo=lakeinfo, lakedata=lakedata))
 }
 
-#test<-makeLAGOSannualts(lakes=c(122517,25980,4664))
