@@ -17,6 +17,8 @@ rm(list=ls())
 
 ```
 
+This document organizes for openness and reproducibility analyses of the temporal coherence of interannual variation in lake primary productivity with terrestrial primary productivity in the landscape surrounding the lake.
+
 # Data important and formatting
 
 ```{r data import and formatting, echo=TRUE}
@@ -24,7 +26,7 @@ rm(list=ls())
 lakes_to_get<-read.csv("~/GitHub/AquaTerrSynch/AnalysisCode/lakes20yrs_chla.csv")$x
 
 lagoslakes.raw<-makeLAGOSannualts(lakes_to_get, tsvars=c("chla"), minmos=3, minobs=3)
-lagoslakes.cln<-cleanAnnualts(lagoslakes.raw) #69 lakes here
+lagoslakes.cln<-cleanAnnualts(lagoslakes.raw) #73 lakes here
 
 
 

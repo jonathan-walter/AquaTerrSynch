@@ -76,7 +76,7 @@ makeIowaALMannualts<-function(almdat, lakechar, getvars, aggfun="gsmean", timesp
           #compute variable
           for(nn in 1:ncol(tmp.yy)){
             if(colnames(tmp.yy)[nn] %in% c("sampledate","LakeName","SampleDate","LakeID")){next}
-            if(nrow(tmp.yy)>=minobs & length(unique(month(tmp.yy$sampledate)))>=minobs){
+            if(nrow(tmp.yy)>=minobs & length(unique(month(tmp.yy$sampledate)))>=minmos){
               ydat<-c(ydat,mean(tmp.yy[,nn], na.rm=TRUE))
             }
             else(ydat<-c(ydat,NA))

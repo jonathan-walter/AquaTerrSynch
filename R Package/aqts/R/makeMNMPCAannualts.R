@@ -20,7 +20,7 @@
 #' and geographic coordinates of lakes, plus any further variables listed in \code{infovars}. Each element of \code{lakedata} corresponds to a lake
 #' in \code{lakes} and is a data frame in which columns are variables in \code{tsvars} and rows correspond to years.
 #' 
-#' Options for \code{infovars} are "Phosphorus as P", "Orthophosphate as P", "Inorganic nitrogen (nitrate and nitrite) as N",
+#' Options for \code{tsvars} are "Phosphorus as P", "Orthophosphate as P", "Inorganic nitrogen (nitrate and nitrite) as N",
 #' "Ammonia-nitrogen as N", "Nitrate as N", "Chloride", "Total suspended solids", "Chlorophyll a, corrected for pheophytin",
 #' "Chlorophyll a, uncorrected for pheophytin", "Depth, Secchi disk depth", "Temperature, water", "Specific conductance",
 #' "pH", "Dissolved oxygen (DO)".
@@ -36,7 +36,7 @@
 
 dir<-"~/Box Sync/NSF EAGER Synchrony/Data/LAGOS Extended/MN_MPCA"
 
-makeLAGOSannualts<-function(dir, tsvars=c("chla"), infovars=NULL, aggfun="gsmean", timespan=NULL,
+makeLAGOSannualts<-function(dir, tsvars="Chlorophyll a, corrected for pheophytin", infovars=NULL, aggfun="gsmean", timespan=NULL,
                             minmos=3, minobs=5, lagosversion="1.087.1"){
   library(dplyr) #load library dependencies
   library(LAGOSNE)
@@ -46,9 +46,57 @@ makeLAGOSannualts<-function(dir, tsvars=c("chla"), infovars=NULL, aggfun="gsmean
   flist<-list.files(path=dir)
   lagosids<-as.numeric(unlist(regmatches(flist, gregexpr("[[:digit:]]+", flist))))
 
+  lakedata<-list()
+  
   for(ff in 1:length(flist)){
     
+    lakedata.ff<-NULL
+    
     dat.ff<-read.csv(paste(dir,flist[ff],sep="/"),stringsAsFactors = F)
+    dat.ff<-dat.ff[dat.ff$parameter %in% tsvars,colnames(dat.ff) %in% c("parameter","result","sampleDate","resultUnit")]
+    
+    #fix date format and convert to POSICXct
+    date.tmp<-simplify2array(strsplit(as.character(dat.ff$sampleDate),"/")) #reformat the sampledate columnn
+    dat.ff$sampleDate<-paste(str_pad(date.tmp[1,],width=2,pad=0),
+                             str_pad(date.tmp[2,],width=2,pad=0),
+                             date.tmp[3,],sep="/")
+    dat.ff$sampleDate<-as.POSIXct(dat.ff$sampleDate,format="%m/%d/%Y")
+    
+    dat.ff<-dat.ff[order(dat.ff$sampleDate),]
+    
+    if(!is.null(timespan)){ #if necessary, limit data to selected timespan
+      dat.ff<-dat.ff[year(dat.ff$sampleDate)>=min(timespan) &
+                             year(dat.ff$sampleDate)<=max(timespan),]
+    }
+    
+    lakeyears<-min(year(dat.ff$sampleDate)):max(year(dat.ff$sampleDate))
+    
+    for(vind in 1:length(tsvars)){
+      
+      tmp.vind<-dat.ff[dat.ff$parameter==tsvars[vind],]
+      
+      aggdat<-NULL #This section probably isn't right . . . . . 
+      for(yy in lakeyears){
+        tmp.yy<-tmp.vind[year(tmp.vind$sampledate)==yy,]
+        
+        if(length(tmp.yy)==0){ydat<-rep(NA, ncol(epidate.ii)-2)} 
+        else{
+          ydat<-NULL
+          if(aggfun=="gsmean"){
+            #compute variable
+              if(nrow(tmp.yy)>=minobs & length(unique(month(tmp.yy$sampledate)))>=minmos){
+                ydat<-c(ydat,mean(tmp.yy[,nn], na.rm=TRUE))
+              }
+              else(ydat<-c(ydat,NA))
+            }
+          }
+          aggdat<-cbind(aggdat,ydat) 
+        
+        }
+      
+      
+    }
+
     
     
   }

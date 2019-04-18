@@ -1,0 +1,1 @@
+#' Fix variables names to LAGOS conventions
