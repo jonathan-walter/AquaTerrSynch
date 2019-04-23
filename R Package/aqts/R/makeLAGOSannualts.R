@@ -65,7 +65,7 @@ makeLAGOSannualts<-function(lakes, tsvars=c("chla"), infovars=NULL, aggfun="gsme
   lakeinfo$gnis_name<-as.character(lakeinfo$gnis_name)
   lakeinfo$start=rep(NA,length(lakes))
   lakeinfo$end=rep(NA,length(lakes))
-  lakeinfo<-lakeinfo[order(lakeinfo$gnis_name),]
+  lakeinfo<-lakeinfo[order(lakeinfo$lagoslakeid),]
   
   lakedata<-list() #initialize output list
   

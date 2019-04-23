@@ -34,10 +34,8 @@
 #' 
 #' @export
 
-dir<-"~/Box Sync/NSF EAGER Synchrony/Data/LAGOS Extended/MN_MPCA"
-
-makeLAGOSannualts<-function(dir, tsvars="Chlorophyll a, corrected for pheophytin", infovars=NULL, aggfun="gsmean", timespan=NULL,
-                            minmos=3, minobs=5, lagosversion="1.087.1"){
+makeMNMPCAannualts<-function(dir, tsvars="Chlorophyll a, corrected for pheophytin", infovars=NULL, aggfun="gsmean", timespan=NULL,
+                            minmos=3, minobs=3, lagosversion="1.087.1"){
   library(dplyr) #load library dependencies
   library(LAGOSNE)
   library(lubridate)
@@ -45,16 +43,31 @@ makeLAGOSannualts<-function(dir, tsvars="Chlorophyll a, corrected for pheophytin
   
   flist<-list.files(path=dir)
   lagosids<-as.numeric(unlist(regmatches(flist, gregexpr("[[:digit:]]+", flist))))
-
+  flist<-flist[order(as.numeric(lagosids))]
+  lagosids<-lagosids[order(as.numeric(lagosids))]
+  
+  #Pull lake info from LAGOSNE
+  infovars<-unique(c("lagoslakeid","gnis_name","nhd_lat","nhd_long", infovars)) #make sure some vars are always pulled
+  info<-lagosne_select(table="locus", vars=infovars) #pull lake info
+  lakeinfo<-info[info$lagoslakeid %in% lagosids,] #extract lake information to output
+  lakeinfo$gnis_name<-as.character(lakeinfo$gnis_name)
+  lakeinfo$start=rep(NA,length(lagosids))
+  lakeinfo$end=rep(NA,length(lagosids))
+  
+  #Build lake data 
   lakedata<-list()
   
   for(ff in 1:length(flist)){
     
-    lakedata.ff<-NULL
-    
     dat.ff<-read.csv(paste(dir,flist[ff],sep="/"),stringsAsFactors = F)
-    dat.ff<-dat.ff[dat.ff$parameter %in% tsvars,colnames(dat.ff) %in% c("parameter","result","sampleDate","resultUnit")]
+    dat.ff<-dat.ff[dat.ff$parameter %in% tsvars, colnames(dat.ff) %in% c("parameter","result","sampleDate")]
     
+    if(nrow(dat.ff)==0){
+      lakeinfo<-lakeinfo[-ff]
+      next
+    }
+    
+    dat.ff$result<-as.numeric(dat.ff$result)
     #fix date format and convert to POSICXct
     date.tmp<-simplify2array(strsplit(as.character(dat.ff$sampleDate),"/")) #reformat the sampledate columnn
     dat.ff$sampleDate<-paste(str_pad(date.tmp[1,],width=2,pad=0),
@@ -75,28 +88,32 @@ makeLAGOSannualts<-function(dir, tsvars="Chlorophyll a, corrected for pheophytin
       
       tmp.vind<-dat.ff[dat.ff$parameter==tsvars[vind],]
       
-      aggdat<-NULL #This section probably isn't right . . . . . 
+      aggdat<-NULL
       for(yy in lakeyears){
-        tmp.yy<-tmp.vind[year(tmp.vind$sampledate)==yy,]
+        tmp.yy<-tmp.vind[year(tmp.vind$sampleDate)==yy,]
         
-        if(length(tmp.yy)==0){ydat<-rep(NA, ncol(epidate.ii)-2)} 
+        if(length(tmp.yy)==0){ydat<-rep(NA, length(lakeyears))} 
         else{
           ydat<-NULL
           if(aggfun=="gsmean"){
             #compute variable
-              if(nrow(tmp.yy)>=minobs & length(unique(month(tmp.yy$sampledate)))>=minmos){
-                ydat<-c(ydat,mean(tmp.yy[,nn], na.rm=TRUE))
+              if(nrow(tmp.yy)>=minobs & length(unique(month(tmp.yy$sampleDate)))>=minmos){
+                ydat<-c(ydat,mean(tmp.yy$result, na.rm=TRUE))
               }
               else(ydat<-c(ydat,NA))
             }
           }
           aggdat<-cbind(aggdat,ydat) 
-        
         }
-      
-      
-    }
+    }#close variable loop
+    aggdat[is.nan(aggdat)]<-NA
+    rownames(aggdat)<-tsvars[!tsvars %in% c("sampledate","lagoslakeid")]
+    colnames(aggdat)<-lakeyears
+    lakedata[[paste0(lagosids[ff])]]<-aggdat
+    lakeinfo$start[lakeinfo$lagoslakeid==lagosids[ff]]<-min(lakeyears)
+    lakeinfo$end[lakeinfo$lagoslakeid==lagosids[ff]]<-max(lakeyears)
+  }#close lake loop
 
-    
-    
-  }
+  return(list(lakeinfo=lakeinfo, lakedata=lakedata))  
+}
+
