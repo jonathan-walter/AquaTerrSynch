@@ -82,7 +82,7 @@ makeLAGOSannualts<-function(lakes, tsvars=c("chla"), infovars=NULL, aggfun="gsme
     for(yy in lakeyears){
       tmp.yy<-epidat.ii[year(epidat.ii$sampledate)==yy,]
       
-      if(length(tmp.yy)==0){ydat<-rep(NA, ncol(epidate.ii)-2)} 
+      if(length(tmp.yy)==0){ydat<-rep(NA, ncol(epidat.ii)-2)} 
       else{
         ydat<-NULL
         if(aggfun=="gsmean"){

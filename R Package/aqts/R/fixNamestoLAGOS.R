@@ -38,25 +38,42 @@ fixNamestoLAGOS<-function(datalist, origin){
   #Iowa ALM
   if(origin=="Iowa ALM"){
     
-    for(lind in 1:length(datalist$lakedata)){
-      oldnames<-rownames(datalist$lakedata[[lind]])
+    for(lind in 1:length(datalist.out$lakedata)){
+      oldnames<-rownames(datalist.out$lakedata[[lind]])
       newnames<-NULL
       for(vind in 1:length(oldnames)){
-        
+        if(oldnames[vind]=="Chlorophyll"){newnames<-c(newnames,"chla")}
+        if(oldnames[vind]=="TN"){newnames<-c(newnames,"tn")}
+        if(oldnames[vind]=="TP"){newnames<-c(newnames,"tp")}
+        if(oldnames[vind]=="SRP"){newnames<-c(newnames,"srp")}
+        if(oldnames[vind]=="Secchi"){newnames<-c(newnames,"secchi")}
       }
-      rownames(datalist$lakedata[[lind]]<-newnames
+      rownames(datalist.out$lakedata[[lind]]<-newnames
     }
 
   }
   
   #Minnesota MPCA
   if(origin=="Minnesota MPCA"){
-
+    oldnames<-rownames(datalist.out$lakedata[[lind]])
+    newnames<-NULL
+    for(vind in 1:length(oldnames)){
+      if(oldnames[vind]=="Chlorophyll a, uncorrected for pheophytin"){
+        warning("using uncorrected Chlorophyll a")
+        newnames<-c(newnames,"chla")
+      }
+      if(oldnames[vind]=="Chlorophyll a, corrected for pheophytin"){newnames<-c(newnames, "chla")}
+      if(oldnames[vind]=="Depth, Secchi disk depth"){newnames<-c(newnames, "secchi")}
+      if(oldnames[vind]=="Inorganic nitrogen (nitrate and nitrite) as N"){newnames<-c(newnames, "no2no3")}
+      if(oldnames[vind]=="Kjeldahl nitrogen as N"){newnames<-c(newnames, "tkn")}
+      #if(oldnames[vind]=="Phosphorous as P"){newnames<-c(newnames, "tp")} #<----------------Check this!
+      #if(oldnames[vind]=="Nutrient-nitrogen as N"]){newnames<-c(newnames, "tn")}<-----------Check this!
+    }
   }
   
   #Wisconsin DNR
   if(origin=="Wisconsin DNR"){
 
   }
-  return(datalist)
+  return(datalist.out)
 }

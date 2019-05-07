@@ -8,6 +8,7 @@ xx[3]<-NA
 xx[6]<-NA
 xx[7]<-NA
 xx[19]<-NA
+#xx[20]<-NA
 
 plot(xx, type="l")
 
@@ -19,12 +20,31 @@ max.na=floor(lmin*.1)
 
 ## Attempt 2
 rle.xx<-rle(!is.na(xx))
-if(cumsum(rle.xx$lengths[rle.xx$values])<(lmin-max.na)){stop("too few observations")}
-for(step in 1:length(rle.xx$lengths)){
-  
-  
-  
+nsteps<-length(rle.xx$lengths)
+for(step in 1:nsteps){
+  if(sum(rle.xx$lengths[rle.xx$values])<(lmin-max.na)){stop("too few observations")}
+  #find out if there are consecutive NAs, and if so take the longer segment
+  if(any(rle.xx$lengths[rle.xx$values==FALSE]>1)){
+    cut<-min(which(rle.xx$lengths[rle.xx$values==FALSE]>1))
+    end<-length(rle.xx$lengths)
+    if(sum(rle.xx$lengths[1:cut]) > sum(rle.xx$lengths[(cut+1):length(rle.xx$lengths)])){
+      #take the early segment
+      rle.xx$lengths<-rle.xx$lengths[1:cut]
+      rle.xx$values<-rle.xx$values[1:cut]
+    }
+    if(sum(rle.xx$lengths[1:cut]) <= sum(rle.xx$lengths[(cut+1):length(rle.xx$lengths)])){
+      #take the late segment
+      
+      rle.xx$lengths<-rle.xx$lengths[(cut+1):end]
+      rle.xx$values<-rle.xx$values[(cut+1):end]
+    }
+  }
+  if(sum(rle.xx$lengths[rle.xx$values])>(lmin-max.na) & 
+     sum(rle.xx$lengths[!rle.xx$values])<=max.na &
+     max(rle.xx$lengths[!rle.xx$values])==1){break}
 }
+  
+  
 
 
 ## Attempt 1 -- temporarily abandoned because I think I can do this in
