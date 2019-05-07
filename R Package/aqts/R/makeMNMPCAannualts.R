@@ -59,11 +59,11 @@ makeMNMPCAannualts<-function(dir, tsvars="Chlorophyll a, corrected for pheophyti
   
   for(ff in 1:length(flist)){
     
-    dat.ff<-read.csv(paste(dir,flist[ff],sep="/"),stringsAsFactors = F)
+    dat.ff<-read.csv(paste(dir,flist[ff],sep="/"),stringsAsFactors = F, na.strings = "(null)")
     dat.ff<-dat.ff[dat.ff$parameter %in% tsvars, colnames(dat.ff) %in% c("parameter","result","sampleDate")]
     
     if(nrow(dat.ff)==0){
-      lakeinfo<-lakeinfo[-ff]
+      lakeinfo<-lakeinfo[lakeinfo$lagoslakeid != lagosids[ff], ]
       next
     }
     
@@ -117,3 +117,4 @@ makeMNMPCAannualts<-function(dir, tsvars="Chlorophyll a, corrected for pheophyti
   return(list(lakeinfo=lakeinfo, lakedata=lakedata))  
 }
 
+test<-makeMNMPCAannualts(dir="/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/LAGOS Extended/MN_MPCA")
