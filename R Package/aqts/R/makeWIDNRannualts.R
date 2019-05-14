@@ -32,8 +32,6 @@
 #' 
 #' @export
 
-dir<-"/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/LAGOS Extended/WI_DNR"
- 
 makeWIDNRannualts<-function(dir, tsvars="Chlorophyll.ug.l.", infovars=NULL, aggfun="gsmean", timespan=NULL,
                              minmos=3, minobs=3, lagosversion="1.087.1"){
   library(dplyr) #load library dependencies
@@ -111,4 +109,3 @@ makeWIDNRannualts<-function(dir, tsvars="Chlorophyll.ug.l.", infovars=NULL, aggf
   return(list(lakeinfo=lakeinfo, lakedata=lakedata))  
 }
 
-test<-makeWIDNRannualts(dir)

@@ -21,14 +21,34 @@ This document organizes for openness and reproducibility analyses of the tempora
 
 # Data important and formatting
 
-```{r data import and formatting, echo=TRUE}
+```{r limno import and formatting, echo=TRUE, cache=TRUE}
 
 lakes_to_get<-read.csv("~/GitHub/AquaTerrSynch/AnalysisCode/lakes20yrs_chla.csv")$x
 
 lagoslakes.raw<-makeLAGOSannualts(lakes_to_get, tsvars=c("chla"), minmos=3, minobs=3)
-lagoslakes.cln<-cleanAnnualts(lagoslakes.raw) #73 lakes here
+lagoslakes.cln<-cleanAnnualts(lagoslakes.raw)
 
+rm(lakes_to_get)
 
+MNMPCAlakes.raw<-makeMNMPCAannualts(dir="/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/LAGOS Extended/MN_MPCA",
+                                    minmos=3, minobs=3)
+MNMPCAlakes.raw<-fixNamestoLAGOS(MNMPCAlakes.raw,"Minnesota MPCA")
+MNMPCAlakes.cln<-cleanAnnualts(MNMPCAlakes.raw)
 
+WIDNRlakes.raw<-makeWIDNRannualts(dir="/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/LAGOS Extended/WI_DNR",
+                                   minmos=3, minobs=3)
+WIDNRlakes.raw<-fixNamestoLAGOS(WIDNRlakes.raw, "Wisconsin DNR")
+WIDNRlakes.cln<-cleanAnnualts(WIDNRlakes.raw)
+
+analysislakes<-list(lakeinfo=rbind(lagoslakes.cln$lakeinfo,MNMPCAlakes.cln$lakeinfo,WIDNRlakes.cln$lakeinfo),
+                    lakedata<-c(lagoslakes.cln$lakedata, MNMPCAlakes.cln$lakedata, WIDNRlakes.cln$lakedata))
+
+any(duplicated(analysislakes$lakeinfo$lagoslakeid)) #no duplicates
+
+```
+
+```{r AVHRR data import, echo=TRUE}
+
+#Add the AVHRR data
 
 ```

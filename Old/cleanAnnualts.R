@@ -30,9 +30,11 @@
 #' 
 #' @export
 
-cleanAnnualts<-function(indat, ymin=20, maxNA=2, optim="chla", timespan=NULL, fill.method="median"){
+cleanAnnualts<-function(indat, ymin=20, maxNA=2, timespan=NULL, fill.method="median"){
   
-  cleandat<-indat$lakedata
+  library(zoo)
+  
+  cleandat<-indat$lakedat
   cleaninfo<-indat$lakeinfo
   
   droplakes<-NULL
@@ -42,7 +44,6 @@ cleanAnnualts<-function(indat, ymin=20, maxNA=2, optim="chla", timespan=NULL, fi
   for(lind in 1:length(indat$lakedata)){
     
     dat.lind<-indat$lakedata[[lind]]
-    if(maxNA < 1){maxNA<-ceiling(ncol(dat.lind)*maxNA)}
     
     if(all(is.na(dat.lind))){
       droplakes<-c(droplakes,lind)
@@ -54,88 +55,57 @@ cleanAnnualts<-function(indat, ymin=20, maxNA=2, optim="chla", timespan=NULL, fi
                            colnames(dat.lind)<=max(timespan)]
     }
     
-    #Find optimal time series for the focal variable
-    optvar<-dat.lind[rownames(dat.lind)==optim,]
-    rle.opt<-rle(!is.na(optvar))
-    maxsteps<-length(rle.opt$lengths)
-    opt.out<-optvar
+    #Drop leading or trailing NAs
+    dat.lind<-t(na.trim(t(dat.lind),sides="both",is.na="all"))
     
-    nacheck<-function(rle.opt){
-      if(!any(!rle.opt$values)){return(TRUE)}
-      else if(max(rle.opt$lengths[!rle.opt$values])==1){return(TRUE)}
-      else{return(FALSE)}    
+    if(maxNA < 1){maxNA<-ceiling(ncol(dat.lind)*maxNA)}
+    
+    #check for ymin
+    
+    if(diff(range(as.numeric(colnames(dat.lind)))) < (ymin-1)){
+      droplakes<-c(droplakes,lind)
     }
     
-    for(step in 1:maxsteps){
-      if(sum(rle.opt$lengths[rle.opt$values])<(ymin-maxNA)){
-        droplakes<-c(droplakes, lind)
-        break
+    else{
+      #check for max NA
+      dropvars<-NULL
+      for(vind in 1:nrow(dat.lind)){
+        if(sum(is.na(dat.lind[vind,]))>maxNA){
+          dropvars<-c(dropvars,vind)
+          next
         }
-      #find out if there are consecutive NAs, and if so take the longer segment
-      if(any(rle.opt$lengths[rle.opt$values==FALSE]>1)){
-        cut<-min(which(rle.opt$lengths>1 & !rle.opt$values))
-        end<-length(rle.opt$lengths)
-        if(sum(rle.opt$lengths[1:(cut-1)]) > sum(rle.opt$lengths[min(c(cut+1,length(rle.opt$lengths))):length(rle.opt$lengths)])){
-          #take the early segment
-          opt.out<-opt.out[1:sum(rle.opt$lengths[1:(cut-1)])]
-          rle.opt$lengths<-rle.opt$lengths[1:(cut-1)]
-          rle.opt$values<-rle.opt$values[1:(cut-1)]
-        }
-        else if(sum(rle.opt$lengths[1:(cut-1)]) <= sum(rle.opt$lengths[(cut+1):length(rle.opt$lengths)])){
-          #take the late segment
-          opt.out<-opt.out[(sum(rle.opt$lengths[1:cut])+1):sum(rle.opt$lengths)]
-          rle.opt$lengths<-rle.opt$lengths[(cut+1):end]
-          rle.opt$values<-rle.opt$values[(cut+1):end]
+        #check if there are consecutive NAs
+        rle.vind<-rle(is.na(dat.lind[vind,]))
+        if(any(rle.vind$lengths[rle.vind$values]>1)){
+          dropvars<-c(dropvars,vind)
+          next
         }
       }
-      if(sum(rle.opt$lengths[rle.opt$values])>(ymin-maxNA) & 
-         sum(rle.opt$lengths[!rle.opt$values])<=maxNA &
-         nacheck(rle.opt)){break}
-    }
-    
-    if(lind %in% droplakes){next}
-    getyears<-names(opt.out)
-    dat.lind<-matrix(dat.lind[,colnames(dat.lind) %in% getyears], nrow=nrow(dat.lind), byrow=T,
-                     dimnames=list(rownames(dat.lind),getyears))
-
-    #check for max NA in non-focal variables
-    dropvars<-NULL
-    for(vind in 1:nrow(dat.lind)){
-      if(sum(is.na(dat.lind[vind,]))>maxNA){
-        dropvars<-c(dropvars,vind)
-        next
-      }
-      #check if there are consecutive NAs
-      rle.vind<-rle(is.na(dat.lind[vind,]))
-      if(any(rle.vind$lengths[rle.vind$values]>1)){
-        dropvars<-c(dropvars,vind)
-        next
-      }
-    }
-    if(!is.null(dropvars)){dat.lind<-dat.lind[-dropvars,]}
-    
-    if(nrow(dat.lind)==0){
-      droplakes<-c(droplakes, lind)
-      next
-    }
+      if(!is.null(dropvars)){dat.lind<-dat.lind[-dropvars,]}
       
-    #fill time series if sporadic NAs
-    for(vind in 1:nrow(dat.lind)){
-      if(fill.method!="median"){stop("only fill.method=median is implemented")}
-      else{
-        dat.lind[vind,is.na(dat.lind[vind,])]<-median(dat.lind[vind,], na.rm=T)
+      if(nrow(dat.lind)==0){
+        droplakes<-c(droplakes, lind)
+        next
+      }
+      
+      #fill time series if sporadic NAs
+      for(vind in 1:nrow(dat.lind)){
+        if(fill.method!="median"){stop("only fill.method=median is implemented")}
+        else{
+          dat.lind[vind,is.na(dat.lind[vind,])]<-median(dat.lind[vind,], na.rm=T)
+        }
       }
     }
     cleandat[[lind]]<-dat.lind
     if(length(dat.lind)==0){droplakes<-c(droplakes, lind)}
   }
   
-  #drop lakes that failed
   if(!is.null(droplakes)){
     cleandat<-cleandat[-droplakes]
     cleaninfo<-cleaninfo[-droplakes,]
-  }
+    }
   #adjust start and end columns of lakeinfo
+  
   for(ii in 1:nrow(cleaninfo)){
     cleaninfo$start[ii]<-min(as.numeric(colnames(cleandat[[ii]])))
     cleaninfo$end[ii]<-max(as.numeric(colnames(cleandat[[ii]])))
