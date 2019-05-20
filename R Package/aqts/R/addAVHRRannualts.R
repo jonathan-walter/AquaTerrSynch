@@ -24,7 +24,7 @@
 #' 
 #' @export
 
-makeAVHRRannualts<-function(lakelist, avhrrdata, buffdist=5000, aggfun="mean"){
+addAVHRRannualts<-function(lakelist, avhrrdata, buffdist=5000, aggfun="mean"){
   
   library(raster)
   library(rgdal)
@@ -33,29 +33,34 @@ makeAVHRRannualts<-function(lakelist, avhrrdata, buffdist=5000, aggfun="mean"){
   lakeinfo<-lakelist$lakeinfo
   lakedata<-lakelist$lakedata
   
-  #make lake points and buffer
+  if(length(buffdist)==1){buffdist<-rep(buffdist, nrow(lakelist$lakeinfo))}
+  if(length(buffdist)!=nrow(lakelist$lakeinfo)){
+    stop("length(buffdist) must be 1 or equal to the number of lakes")
+  }
+  
+  #make lake points 
   lakepts<-SpatialPoints(coords=data.frame(x=lakeinfo$nhd_long,y=lakeinfo$nhd_lat),
                             proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs"))
   avhrrproj<-crs(avhrrdata)
   lakepts.prj<-spTransform(lakepts, avhrrproj)
-  lakebuffer<-buffer(lakepts.prj, width=buffdist, dissolve=FALSE)
+  
   
   #loop through lakes and extract AVHRR time series
   for(ii in 1:nrow(lakeinfo)){
-    lakebuffer.ii<-lakebuffer[ii,]
-    avhrrstack.ii<-mask(avhrrdata,lakebuffer.ii)
+    lakebuffer.ii<-buffer(lakepts.prj[ii,], width=buffdist[ii], dissolve=FALSE)
+    #avhrrstack.ii<-mask(avhrrdata,lakebuffer.ii)
     
     if(!aggfun %in% c("mean","median")){stop("aggfun argument must be 'mean' or 'median'.")}
     else if(aggfun=="mean"){
-      ts.ii<-cellStats(avhrrstack.ii, mean, na.rm=TRUE)
+      ts.ii<-cellStats(avhrrdata, mean, na.rm=TRUE)
     }
     else if(aggfun=="median"){
-      ts.ii<-cellStats(avhrrstack.ii, median, na.rm=TRUE)
+      ts.ii<-cellStats(avhrrdata, median, na.rm=TRUE)
     }
 
     lakeyrs<-lakeinfo$start[ii]:lakeinfo$end[ii]
     ts.out<-rep(NA, length(lakeyrs))
-    ts.out[lakeyrs %in% 1989:2015]<-ts.ii[1989:2015 %in% lakeyrs]
+    ts.out[lakeyrs %in% 1989:2018]<-ts.ii[1989:2018 %in% lakeyrs]
     varnames<-rownames(lakedata[[ii]])
     lakedata[[ii]]<-rbind(lakedata[[ii]],ts.out)
     rownames(lakedata[[ii]])<-c(varnames,deparse(substitute(avhrrdata)))

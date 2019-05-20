@@ -12,6 +12,10 @@ library(aqts)
 library(wsyn)
 library(rgdal)
 library(LAGOSNE)
+library(raster)
+library(MuMIn)
+library(dplyr)
+library(nlme)
 
 rm(list=ls())
 
@@ -25,30 +29,213 @@ This document organizes for openness and reproducibility analyses of the tempora
 
 lakes_to_get<-read.csv("~/GitHub/AquaTerrSynch/AnalysisCode/lakes20yrs_chla.csv")$x
 
-lagoslakes.raw<-makeLAGOSannualts(lakes_to_get, tsvars=c("chla"), minmos=3, minobs=3)
+lagoslakes.raw<-makeLAGOSannualts(lakes_to_get, infovars=c("lake_area_ha", "lake_perim_meters", "nhd_ftype", "hu4_zoneid"), tsvars=c("chla"), 
+                                  minmos=3, minobs=3, timespan=c(1989,2018))
 lagoslakes.cln<-cleanAnnualts(lagoslakes.raw)
 
 rm(lakes_to_get)
 
 MNMPCAlakes.raw<-makeMNMPCAannualts(dir="/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/LAGOS Extended/MN_MPCA",
-                                    minmos=3, minobs=3)
+                                    infovars=c("lake_area_ha", "lake_perim_meters", "nhd_ftype", "hu4_zoneid"), minmos=3, minobs=3, timespan=c(1989,2018))
 MNMPCAlakes.raw<-fixNamestoLAGOS(MNMPCAlakes.raw,"Minnesota MPCA")
 MNMPCAlakes.cln<-cleanAnnualts(MNMPCAlakes.raw)
 
 WIDNRlakes.raw<-makeWIDNRannualts(dir="/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/LAGOS Extended/WI_DNR",
-                                   minmos=3, minobs=3)
+                                  infovars=c("lake_area_ha", "lake_perim_meters", "nhd_ftype", "hu4_zoneid"), minmos=3, minobs=3, timespan=c(1989,2018))
 WIDNRlakes.raw<-fixNamestoLAGOS(WIDNRlakes.raw, "Wisconsin DNR")
 WIDNRlakes.cln<-cleanAnnualts(WIDNRlakes.raw)
 
 analysislakes<-list(lakeinfo=rbind(lagoslakes.cln$lakeinfo,MNMPCAlakes.cln$lakeinfo,WIDNRlakes.cln$lakeinfo),
-                    lakedata<-c(lagoslakes.cln$lakedata, MNMPCAlakes.cln$lakedata, WIDNRlakes.cln$lakedata))
+                    lakedata=c(lagoslakes.cln$lakedata, MNMPCAlakes.cln$lakedata, WIDNRlakes.cln$lakedata))
 
 any(duplicated(analysislakes$lakeinfo$lagoslakeid)) #no duplicates
 
 ```
 
-```{r AVHRR data import, echo=TRUE}
+```{r AVHRR data import, echo=FALSE, cache=TRUE}
 
-#Add the AVHRR data
+dbuff<-calcBufferDist(sa=analysislakes$lakeinfo$lake_area_ha, ltype=analysislakes$lakeinfo$nhd_ftype, minbuff=2500)
 
+accndvi<-stack("/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/SatelliteData/accvi1989_2018.img")
+maxndvi<-stack("/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/SatelliteData/mxvi1989_2018.img")
+
+nlcdwater<-raster("/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/SatelliteData/landcover/nlcd2011_cls11.img")
+watermask<-nlcdwater<0.05
+
+accndvi<-mask(accndvi,watermask,maskvalue=0) #mask out pixels that have too much water in them
+maxndvi<-mask(maxndvi,watermask,maskvalue=0)
+
+analysislakes<-addAVHRRannualts(analysislakes, accndvi, dbuff)
+analysislakes<-addAVHRRannualts(analysislakes, maxndvi, dbuff)
+
+save.image("/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/RData files/ms1_analysis_inprogress1.RData")
+
+```
+
+```{r examine missing values, echo=TRUE, cache=FALSE}
+any(sapply(analysislakes$lakedata, function(x){any(is.infinite(x))}))
+any(sapply(analysislakes$lakedata, function(x){any(is.na(x))}))
+which(sapply(analysislakes$lakedata, function(x){any(is.na(x))}))
+analysislakes$lakeinfo[which(sapply(analysislakes$lakedata, function(x){any(is.na(x))})),]
+
+image(accndvi)
+points(lakepts.prj[which(sapply(analysislakes$lakedata, function(x){any(is.na(x))})),])
+
+dbuff[which(sapply(analysislakes$lakedata, function(x){any(is.na(x))}))]
+
+analysislakes$lakeinfo<-analysislakes$lakeinfo[!sapply(analysislakes$lakedata, function(x){any(is.na(x))}),]
+analysislakes$lakedata<-analysislakes$lakedata[!sapply(analysislakes$lakedata, function(x){any(is.na(x))})]
+```
+
+```{r compute coherences, echo=TRUE, cache=FALSE}
+
+source("~/GitHub/AquaTerrSynch/AnalysisCode/bandtest_coh.R")
+
+tsranges<-rbind(c(2,4),c(4,Inf),c(2,Inf))
+
+coh.chlaXaccndvi<-NULL
+coh.chlaXmaxndvi<-NULL
+
+for(lind in 1:length(analysislakes$lakedata)){
+  lakedat.ii<-cleandat(analysislakes$lakedata[[lind]], as.numeric(colnames(analysislakes$lakedata[[lind]])), clev=5)$cdat
+  chlaXaccndvi<-coh(lakedat.ii[1,], lakedat.ii[2,], as.numeric(colnames(analysislakes$lakedata[[lind]])),
+                    norm="powall", sigmethod="fast", nrand=10000)
+  chlaXmaxndvi<-coh(lakedat.ii[1,], lakedat.ii[3,], as.numeric(colnames(analysislakes$lakedata[[lind]])),
+                    norm="powall", sigmethod="fast", nrand=10000)
+  for(rind in 1:nrow(tsranges)){
+    chlaXaccndvi<-bandtest.coh(chlaXaccndvi, tsranges[rind,])
+    chlaXmaxndvi<-bandtest.coh(chlaXmaxndvi, tsranges[rind,])
+  }
+  coh.chlaXaccndvi<-rbind(coh.chlaXaccndvi, c(t(as.matrix(chlaXaccndvi$bandp[,3:5]))))
+  coh.chlaXmaxndvi<-rbind(coh.chlaXmaxndvi, c(t(as.matrix(chlaXmaxndvi$bandp[,3:5]))))
+  
+}
+
+coh.chlaXaccndvi<-as.data.frame(coh.chlaXaccndvi)
+coh.chlaXmaxndvi<-as.data.frame(coh.chlaXmaxndvi)
+
+colnames(coh.chlaXaccndvi)<-paste0("accndvi",c("p.ts1","phi.ts1","coh.ts1","p.ts2","phi.ts2","coh.ts2","p.ts3","phi.ts3","coh.ts3"))
+colnames(coh.chlaXmaxndvi)<-paste0("maxndvi",c("p.ts1","phi.ts1","coh.ts1","p.ts2","phi.ts2","coh.ts2","p.ts3","phi.ts3","coh.ts3"))
+
+coh.chlaXaccndvi$lagoslakeid<-analysislakes$lakeinfo$lagoslakeid
+coh.chlaXmaxndvi$lagoslakeid<-analysislakes$lakeinfo$lagoslakeid
+
+```
+
+```{r summarize coherences, echo=TRUE, cache=FALSE}
+#short timescales
+hist(coh.chlaXaccndvi$accndvicoh.ts1)
+hist(coh.chlaXmaxndvi$maxndvicoh.ts1)
+
+quantile(coh.chlaXaccndvi$accndvip.ts1)
+quantile(coh.chlaXmaxndvi$maxndvip.ts1)
+
+alpha=0.05
+sum(coh.chlaXaccndvi$accndvip.ts1<alpha)/nrow(coh.chlaXaccndvi)
+sum(coh.chlaXmaxndvi$maxndvip.ts1<alpha)/nrow(coh.chlaXmaxndvi)
+
+print(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts1<alpha]/pi) #only pattern is that lakes don't lead the landscape
+print(coh.chlaXmaxndvi$maxndviphi.ts1[coh.chlaXmaxndvi$maxndvip.ts1<alpha]/pi)
+
+#long timescales
+hist(coh.chlaXaccndvi$accndvicoh.ts2)
+hist(coh.chlaXmaxndvi$maxndvicoh.ts2)
+
+quantile(coh.chlaXaccndvi$accndvip.ts2)
+quantile(coh.chlaXmaxndvi$maxndvip.ts2)
+
+alpha=0.05
+sum(coh.chlaXaccndvi$accndvip.ts2<alpha)/nrow(coh.chlaXaccndvi)
+sum(coh.chlaXmaxndvi$maxndvip.ts2<alpha)/nrow(coh.chlaXmaxndvi)
+
+print(coh.chlaXaccndvi$accndviphi.ts2[coh.chlaXaccndvi$accndvip.ts2<alpha]/pi)
+print(coh.chlaXmaxndvi$maxndviphi.ts2[coh.chlaXmaxndvi$maxndvip.ts2<alpha]/pi)
+
+#all timescales
+hist(coh.chlaXaccndvi$accndvicoh.ts3)
+hist(coh.chlaXmaxndvi$maxndvicoh.ts3)
+
+quantile(coh.chlaXaccndvi$accndvip.ts3)
+quantile(coh.chlaXmaxndvi$maxndvip.ts3)
+
+alpha=0.05
+sum(coh.chlaXaccndvi$accndvip.ts3<alpha)/nrow(coh.chlaXaccndvi)
+sum(coh.chlaXmaxndvi$maxndvip.ts3<alpha)/nrow(coh.chlaXmaxndvi)
+
+print(coh.chlaXaccndvi$accndviphi.ts3[coh.chlaXaccndvi$accndvip.ts3<alpha]/pi)
+print(coh.chlaXmaxndvi$maxndviphi.ts3[coh.chlaXmaxndvi$maxndvip.ts3<alpha]/pi)
+
+```
+
+```{r add vars for modelling, echo=TRUE, cache=FALSE}
+
+#Need to add: depth, average growing season Chlorophyll-a, TSI(chla) categories, pct ag
+
+#agriculture -- is 500m buffer best? Other options include 100m buffer (probably too small) and hu12 watershed
+pct.ag<-lagosne_select(table="buffer500m.lulc", vars=c("lagoslakeid","buffer500m_nlcd2001_pct_82","buffer500m_nlcd2006_pct_82","buffer500m_nlcd2011_pct_82"))
+pct.ag<-pct.ag[pct.ag$lagoslakeid %in% analysislakes$lakeinfo$lagoslakeid,]
+pct.ag.avg<-data.frame(lagoslakeid=pct.ag$lagoslakeid, pct.ag=rowMeans(pct.ag[,2:4]))
+
+#depth
+depth<-lagosne_select(table="lakes_limno", vars=c("lagoslakeid","maxdepth"))
+depth<-depth[depth$lagoslakeid %in% analysislakes$lakeinfo$lagoslakeid,] #use max depth because it's more complete
+
+#growing season Chlorophyll-a
+chla<-lagosne_select(table="epi_nutr", vars=c("lagoslakeid","samplemonth","chla"))
+chla<-chla[chla$lagoslakeid %in% analysislakes$lakeinfo$lagoslakeid,]
+gs.chla<-chla[chla$samplemonth %in% 5:9,]
+avg.chla<-aggregate(chla ~ lagoslakeid, data=gs.chla, FUN=mean, na.rm=T)
+
+#Chlorophyll-a TSI class
+#TSI(CHL) = 9.81 ln(CHL) + 30.6
+tsi.chl<-data.frame(lagoslakeid=avg.chla$lagoslakeid, tsi=9.81 * log(avg.chla$chla) + 30.6)
+tsi.chl$tsi.cat<-rep("lake",nrow(tsi.chl))
+
+tsi.chl$tsi.cat[tsi.chl$tsi < 40]<-"oligotrophic"
+tsi.chl$tsi.cat[tsi.chl$tsi >=40 & tsi.chl$tsi < 50]<-"mesotrophic"
+tsi.chl$tsi.cat[tsi.chl$tsi >=50 & tsi.chl$tsi < 70]<-"eutrophic"
+tsi.chl$tsi.cat[tsi.chl$tsi >= 70] <-"hypereutrophic"
+
+#huc2 and huc4 watershed codes
+huc_codes<-read.csv("/Users/jonathanwalter/GitHub/AquaTerrSynch/AnalysisCode/match_huc_codes.csv", colClasses = 'character')
+
+predictors<-analysislakes$lakeinfo
+predictors$tslength<-predictors$end-predictors$start+1
+predictors<-left_join(predictors, depth, by="lagoslakeid")
+predictors<-left_join(predictors, pct.ag.avg, by="lagoslakeid")
+predictors<-left_join(predictors, avg.chla, by="lagoslakeid")
+predictors<-left_join(predictors, tsi.chl, by="lagoslakeid")
+predictors<-left_join(predictors, huc_codes, by="hu4_zoneid")
+
+modvars.accndvi<-left_join(predictors, coh.chlaXaccndvi, by="lagoslakeid")
+modvars.accndvi$nhd_ftype<-factor(modvars.accndvi$nhd_ftype)
+modvars.accndvi$tsi.cat<-factor(modvars.accndvi$tsi.cat)
+```
+
+```{r linear modelling, echo=TRUE, cache=FALSE}
+
+modvars.accndvi<-modvars.accndvi[!is.na(modvars.accndvi$maxdepth),]
+modvars.accndvi<-modvars.accndvi[!is.na(modvars.accndvi$pct.ag),]
+
+#short timescales
+fm.coh.accndvi.st<-gls(accndvicoh.ts1 ~ maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi,
+                       correlation=corExp(form = ~ nhd_lat + nhd_long))
+dredge.coh.accndvi.st<-dredge(fm.coh.accndvi.st, beta="sd") #intercept only is best model. Disappointing.
+print(dredge.coh.accndvi.st)
+
+fm.p.accndvi.st<-gls(accndvip.ts1 ~ maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi,
+                       correlation=corExp(form = ~ nhd_lat + nhd_long))
+dredge.p.accndvi.st<-dredge(fm.p.accndvi.st, beta="sd") #intercept only is best model. Disappointing.
+print(dredge.p.accndvi.st)
+
+#long timescales
+fm.coh.accndvi.lt<-gls(accndvicoh.ts2 ~ maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi,
+                       correlation=corExp(form = ~ nhd_lat + nhd_long))
+dredge.coh.accndvi.lt<-dredge(fm.coh.accndvi.lt, beta="sd") #intercept only is best model. Disappointing.
+print(dredge.coh.accndvi.lt)
+
+fm.p.accndvi.lt<-gls(accndvip.ts2 ~ maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi,
+                       correlation=corExp(form = ~ nhd_lat + nhd_long))
+dredge.p.accndvi.lt<-dredge(fm.p.accndvi.lt, beta="sd") #intercept only is best model. Disappointing.
+print(dredge.p.accndvi.lt)
 ```

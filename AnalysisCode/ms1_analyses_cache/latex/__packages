@@ -1,0 +1,12 @@
+base
+aqts
+wsyn
+sp
+rgdal
+LAGOSNE
+raster
+MuMIn
+dplyr
+nlme
+lubridate
+stringr
