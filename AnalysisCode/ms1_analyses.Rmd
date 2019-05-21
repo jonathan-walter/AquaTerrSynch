@@ -16,6 +16,7 @@ library(raster)
 library(MuMIn)
 library(dplyr)
 library(nlme)
+library(lmerTest)
 
 rm(list=ls())
 
@@ -85,11 +86,11 @@ coh.chlaXmaxndvi$lagoslakeid<-analysislakes$lakeinfo$lagoslakeid
 
 ```{r summarize coherences, echo=TRUE, cache=FALSE}
 #short timescales
-hist(coh.chlaXaccndvi$accndvicoh.ts1)
-hist(coh.chlaXmaxndvi$maxndvicoh.ts1)
+hist(coh.chlaXaccndvi$accndvicoh.ts1, main="Accumulated NDVI, short timescales", xlab="Coherence", ylab="Frequency")
+hist(coh.chlaXmaxndvi$maxndvicoh.ts1, main="Maximum NDVI, short timescales", xlab="Coherence", ylab="Frequency")
 
-quantile(coh.chlaXaccndvi$accndvip.ts1)
-quantile(coh.chlaXmaxndvi$maxndvip.ts1)
+quantile(coh.chlaXaccndvi$accndvicoh.ts1)
+quantile(coh.chlaXmaxndvi$maxndvicoh.ts1)
 
 alpha=0.05
 sum(coh.chlaXaccndvi$accndvip.ts1<alpha)/nrow(coh.chlaXaccndvi)
@@ -98,12 +99,17 @@ sum(coh.chlaXmaxndvi$maxndvip.ts1<alpha)/nrow(coh.chlaXmaxndvi)
 print(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts1<alpha]/pi) #only pattern is that lakes don't lead the landscape
 print(coh.chlaXmaxndvi$maxndviphi.ts1[coh.chlaXmaxndvi$maxndvip.ts1<alpha]/pi)
 
-#long timescales
-hist(coh.chlaXaccndvi$accndvicoh.ts2)
-hist(coh.chlaXmaxndvi$maxndvicoh.ts2)
+phicls<-c(-1,-.75,-0.25,0.25,0.75,1)
 
-quantile(coh.chlaXaccndvi$accndvip.ts2)
-quantile(coh.chlaXmaxndvi$maxndvip.ts2)
+hist(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts1<0.2]/pi, main="Accumulated NDVI, short timescales", xlab="Phase (pi)", ylab="Frequency", breaks=phicls)
+#hist(coh.chlaXmaxndvi$maxndviphi.ts1[coh.chlaXmaxndvi$maxndvip.ts1<0.2]/pi, main="Maximum NDVI, short timescales", xlab="Phase (pi)", ylab="Frequency", breaks=5)
+
+#long timescales
+hist(coh.chlaXaccndvi$accndvicoh.ts2, main="Accumulated NDVI, long timescales", xlab="Coherence", ylab="Frequency")
+hist(coh.chlaXmaxndvi$maxndvicoh.ts2, main="Maximum NDVI, long timescales", xlab="Coherence", ylab="Frequency")
+
+quantile(coh.chlaXaccndvi$accndvicoh.ts2)
+quantile(coh.chlaXmaxndvi$maxndvicoh.ts2)
 
 alpha=0.05
 sum(coh.chlaXaccndvi$accndvip.ts2<alpha)/nrow(coh.chlaXaccndvi)
@@ -112,19 +118,8 @@ sum(coh.chlaXmaxndvi$maxndvip.ts2<alpha)/nrow(coh.chlaXmaxndvi)
 print(coh.chlaXaccndvi$accndviphi.ts2[coh.chlaXaccndvi$accndvip.ts2<alpha]/pi)
 print(coh.chlaXmaxndvi$maxndviphi.ts2[coh.chlaXmaxndvi$maxndvip.ts2<alpha]/pi)
 
-#all timescales
-hist(coh.chlaXaccndvi$accndvicoh.ts3)
-hist(coh.chlaXmaxndvi$maxndvicoh.ts3)
-
-quantile(coh.chlaXaccndvi$accndvip.ts3)
-quantile(coh.chlaXmaxndvi$maxndvip.ts3)
-
-alpha=0.05
-sum(coh.chlaXaccndvi$accndvip.ts3<alpha)/nrow(coh.chlaXaccndvi)
-sum(coh.chlaXmaxndvi$maxndvip.ts3<alpha)/nrow(coh.chlaXmaxndvi)
-
-print(coh.chlaXaccndvi$accndviphi.ts3[coh.chlaXaccndvi$accndvip.ts3<alpha]/pi)
-print(coh.chlaXmaxndvi$maxndviphi.ts3[coh.chlaXmaxndvi$maxndvip.ts3<alpha]/pi)
+hist(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts2<0.2]/pi, main="Accumulated NDVI, long timescales", xlab="Phase (pi)", ylab="Frequency", breaks=phicls)
+#hist(coh.chlaXmaxndvi$maxndviphi.ts1[coh.chlaXmaxndvi$maxndvicoh.ts2>0.6]/pi, main="Maximum NDVI, short timescales", xlab="Phase (pi)", ylab="Frequency", breaks=5)
 
 ```
 
@@ -172,48 +167,86 @@ modvars.accndvi<-left_join(predictors, coh.chlaXaccndvi, by="lagoslakeid")
 modvars.accndvi$nhd_ftype<-factor(modvars.accndvi$nhd_ftype)
 modvars.accndvi$tsi.cat<-factor(modvars.accndvi$tsi.cat)
 modvars.accndvi$tslength<-modvars.accndvi$end-modvars.accndvi$start + 1
-```
-
-```{r linear modelling, echo=TRUE, cache=FALSE}
 
 modvars.accndvi<-modvars.accndvi[!is.na(modvars.accndvi$maxdepth),]
 modvars.accndvi<-modvars.accndvi[!is.na(modvars.accndvi$pct.ag),]
 
+modvars.accndvi.phist<-modvars.accndvi[modvars.accndvi$accndvip.ts1<0.2,]
+modvars.accndvi.philt<-modvars.accndvi[modvars.accndvi$accndvip.ts2<0.2,]
+```
+
+```{r gls modelling, echo=TRUE, cache=FALSE}
 #short timescales
-fm.coh.accndvi.st<-gls(accndvicoh.ts1 ~ maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi,
+gls.coh.accndvi.st<-gls(accndvicoh.ts1 ~ maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi,
                        correlation=corExp(form = ~ nhd_lat + nhd_long))
-summary(fm.coh.accndvi.st)
-dredge.coh.accndvi.st<-dredge(fm.coh.accndvi.st, beta="sd") #intercept only is best model. Disappointing.
+summary(gls.coh.accndvi.st)
+dredge.coh.accndvi.st<-dredge(gls.coh.accndvi.st, beta="sd") #intercept only is best model. Disappointing.
 print(head(dredge.coh.accndvi.st))
 
-fm.p.accndvi.st<-gls(accndvip.ts1 ~ tslength + maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi,
+gls.p.accndvi.st<-gls(accndvip.ts1 ~ tslength + maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi,
                        correlation=corExp(form = ~ nhd_lat + nhd_long))
-summary(fm.p.accndvi.st)
-dredge.p.accndvi.st<-dredge(fm.p.accndvi.st, beta="sd") #intercept only is best model. Disappointing.
+summary(gls.p.accndvi.st)
+dredge.p.accndvi.st<-dredge(gls.p.accndvi.st, beta="sd") #intercept only is best model. Disappointing.
 print(head(dredge.p.accndvi.st))
 
-fm.phi.accndvi.st<-gls(cos(accndviphi.ts1) ~ maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi,
-                       correlation=corExp(form = ~ nhd_lat + nhd_long))
-summary(fm.phi.accndvi.st)
-dredge.phi.accndvi.st<-dredge(fm.phi.accndvi.st, beta="sd") #intercept only is best model. Disappointing.
+gls.phi.accndvi.st<-gls(cos(accndviphi.ts1) ~ maxdepth + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi.phist) #remove ftype b/c only lakes
+summary(gls.phi.accndvi.st)
+dredge.phi.accndvi.st<-dredge(gls.phi.accndvi.st, beta="sd") #intercept only is best model. Disappointing.
 print(head(dredge.phi.accndvi.st))
 
 #long timescales
-fm.coh.accndvi.lt<-gls(accndvicoh.ts2 ~ maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi,
+gls.coh.accndvi.lt<-gls(accndvicoh.ts2 ~ maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi,
                        correlation=corExp(form = ~ nhd_lat + nhd_long))
-summary(fm.coh.accndvi.lt)
-dredge.coh.accndvi.lt<-dredge(fm.coh.accndvi.lt, beta="sd") #intercept only is best model. Disappointing.
+summary(gls.coh.accndvi.lt)
+dredge.coh.accndvi.lt<-dredge(gls.coh.accndvi.lt, beta="sd") #intercept only is best model. Disappointing.
 print(head(dredge.coh.accndvi.lt))
 
-fm.p.accndvi.lt<-gls(accndvip.ts2 ~ tslength + maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi,
+gls.p.accndvi.lt<-gls(accndvip.ts2 ~ tslength + maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi,
                        correlation=corExp(form = ~ nhd_lat + nhd_long))
-summary(fm.p.accndvi.lt)
-dredge.p.accndvi.lt<-dredge(fm.p.accndvi.lt, beta="sd") #intercept only is best model. Disappointing.
+summary(gls.p.accndvi.lt)
+dredge.p.accndvi.lt<-dredge(gls.p.accndvi.lt, beta="sd") #intercept only is best model. Disappointing.
 print(head(dredge.p.accndvi.lt))
 
-fm.phi.accndvi.lt<-gls(cos(accndviphi.ts2) ~ maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi,
+gls.phi.accndvi.lt<-gls(cos(accndviphi.ts2) ~ maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi.philt,
                        correlation=corExp(form = ~ nhd_lat + nhd_long))
-summary(fm.phi.accndvi.lt)
-dredge.phi.accndvi.lt<-dredge(fm.phi.accndvi.lt, beta="sd") #intercept only is best model. Disappointing.
+summary(gls.phi.accndvi.lt)
+dredge.phi.accndvi.lt<-dredge(gls.phi.accndvi.lt, beta="sd") #intercept only is best model. Disappointing.
 print(head(dredge.phi.accndvi.lt))
 ```
+
+GLS models sucked, but inspection of results suggested that mixed effects models with random effects of region on the intercept may likely be an improvement.
+
+```{r mixed modelling, echo=TRUE, cache=FALSE}
+lme.coh.accndvi.st<-lmer(accndvicoh.ts1 ~ maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + (1|huc2_code), data=modvars.accndvi, na.action="na.fail")
+summary(lme.coh.accndvi.st)
+dredge.coh.accndvi.st<-dredge(lme.coh.accndvi.st, beta="sd") #intercept only is best model. Disappointing.
+print(head(dredge.coh.accndvi.st))
+
+lme.p.accndvi.st<-lmer(accndvip.ts1 ~ tslength + maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + (1|huc2_code), data=modvars.accndvi, na.action="na.fail")
+summary(lme.p.accndvi.st)
+dredge.p.accndvi.st<-dredge(lme.p.accndvi.st, beta="sd") #intercept only is best model. Disappointing.
+print(head(dredge.p.accndvi.st))
+
+lme.phi.accndvi.st<-lmer(accndviphi.ts1 ~ maxdepth + lake_area_ha + pct.ag + chla + tsi.cat + (1|huc2_code), data=modvars.accndvi.phist, na.action="na.fail")
+summary(lme.phi.accndvi.st)
+dredge.phi.accndvi.st<-dredge(lme.phi.accndvi.st, beta="sd") #model with TSI is unconvincingly better than intercept-only (dAIC = 0.92)
+print(head(dredge.phi.accndvi.st))
+
+lme.coh.accndvi.lt<-lmer(accndvicoh.ts2 ~ maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + (1|huc2_code), data=modvars.accndvi, na.action="na.fail")
+summary(lme.coh.accndvi.lt)
+dredge.coh.accndvi.lt<-dredge(lme.coh.accndvi.lt, beta="sd") #lake type is marginal improvement over intercept only (dAIC = 0.1)
+print(head(dredge.coh.accndvi.lt))
+
+lme.p.accndvi.lt<-lmer(accndvip.ts2 ~ tslength + maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + (1|huc2_code), data=modvars.accndvi, na.action="na.fail")
+summary(lme.p.accndvi.lt)
+dredge.p.accndvi.lt<-dredge(lme.p.accndvi.lt, beta="sd") #intercept only is best model. Disappointing.
+print(head(dredge.p.accndvi.lt))
+
+lme.phi.accndvi.lt<-lmer(accndviphi.ts2 ~ maxdepth + lake_area_ha + pct.ag + chla + tsi.cat + (1|huc2_code), data=modvars.accndvi.philt, na.action="na.fail")
+summary(lme.phi.accndvi.lt)
+dredge.phi.accndvi.lt<-dredge(lme.phi.accndvi.lt, beta="sd") #model with TSI is unconvincingly better than intercept-only (dAIC = 0.92)
+print(head(dredge.phi.accndvi.lt))
+
+```
+
+Adding random effects of huc2 region on intercept helped somewhat. Some possibilities are to add more detailed lake type classes, and to model 2-3 regions separately.
