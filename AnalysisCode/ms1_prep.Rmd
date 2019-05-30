@@ -45,6 +45,8 @@ WIDNRlakes.raw<-makeWIDNRannualts(dir="/Users/jonathanwalter/Box Sync/NSF EAGER 
 WIDNRlakes.raw<-fixNamestoLAGOS(WIDNRlakes.raw, "Wisconsin DNR")
 WIDNRlakes.cln<-cleanAnnualts(WIDNRlakes.raw)
 
+#IowaALMlakes<-makeIowaALMannualts(almdat="/Users/jonahtanwalter/Box Sync/NSF EAGER Synchrony/Data/Iowa Synchrony Lakes.csv")
+
 analysislakes<-list(lakeinfo=rbind(lagoslakes.cln$lakeinfo,MNMPCAlakes.cln$lakeinfo,WIDNRlakes.cln$lakeinfo),
                     lakedata=c(lagoslakes.cln$lakedata, MNMPCAlakes.cln$lakedata, WIDNRlakes.cln$lakedata))
 
