@@ -53,11 +53,21 @@ tt<-seq(1,tmax,length.out=tmax/res)
 
 y5<-sin(seq(0,2*pi*(tmax/p3), length.out=tmax/res))
 
-plot(tt,y5,type="l")
+png("~/Box Sync/NSF EAGER Synchrony/Manuscripts/ThinkPiece/cycle_trends_v1.png", units="in",
+    height=2.5, width=6.5, res=300)
+par(mar=c(4,2.5,2,2), mgp=c(2,0.8,0))
+plot(tt,y5,type="l", ylab="", xlab="Timestep")
 
-rect(4,-1.05,7,1.05)
-rect(8,-1.05,11,1.05)
-rect(12,-1.05,15,1.05)
+rect(4,-1.05,7,1.05, border="grey")
+rect(8,-1.05,11,1.05, border="grey")
+rect(12,-1.05,15,1.05, border="grey")
 
 lm.w1<-lm(y5[tt>4&tt<7]~tt[tt>4&tt<7])
 lm.w2<-lm(y5[tt>8&tt<11]~tt[tt>8&tt<11])        
+lm.w3<-lm(y5[tt>12&tt<15]~tt[tt>12&tt<15])
+
+lines(tt[tt>4&tt<7], predict(lm.w1), col="red")
+lines(tt[tt>8&tt<11], predict(lm.w2), col="red")
+lines(tt[tt>12&tt<15], predict(lm.w3), col="red")
+
+dev.off()
