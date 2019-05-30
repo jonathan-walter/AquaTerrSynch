@@ -17,6 +17,8 @@ library(MuMIn)
 library(dplyr)
 library(nlme)
 library(lmerTest)
+library(viridis)
+library(fields)
 
 rm(list=ls())
 
@@ -123,12 +125,40 @@ hist(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts2<0.2]/pi, main
 
 ```
 
+```{r mapping, echo=TRUE, cache=FALSE}
+
+states<-readOGR("~/Box Sync/NSF EAGER Synchrony/Data/statesp020.shp")
+getstates<-c("Minnesota", "Iowa", "Wisconsin", "Illinois", "Missouri", "Michigan", "Indiana", "Ohio", "Pennsylvania", "New York", "New Jersey", "Connecticut", "New Hampshire", "Rhode Island", "Massachusetts", "Vermont", "Maine")
+lagosstates<-states[states@data$STATE %in% getstates,]
+
+plot(lagosstates, main="Lakes selected for analysis")
+points(analysislakes$lakeinfo$nhd_long, analysislakes$lakeinfo$nhd_lat, pch=16, cex=1, col="blue")
+
+
+cohplotdata<-left_join(analysislakes$lakeinfo, coh.chlaXaccndvi, by="lagoslakeid")
+
+pal<-viridis(100)
+
+par(mar=c(1,0,2,0))
+
+plot(lagosstates, main="Lakes by short timescale coherence")
+points(cohplotdata$nhd_long, cohplotdata$nhd_lat, pch=16, cex=1, col=pal[round(cohplotdata$accndvicoh.ts1,2)*100])
+colorbar.plot(x=mean(par("usr")[1:2]),y=par("usr")[3],strip=1:100,col=pal,horizontal = T)
+
+plot(lagosstates, main="Lakes by long timescale coherence")
+points(cohplotdata$nhd_long, cohplotdata$nhd_lat, pch=16, cex=1, col=pal[round(cohplotdata$accndvicoh.ts2,2)*100])
+colorbar.plot(x=mean(par("usr")[1:2]),y=par("usr")[3],strip=1:100,col=pal,horizontal = T)
+
+```
+
+
 ```{r add vars for modelling, echo=TRUE, cache=FALSE}
 
 #Need to add: depth, average growing season Chlorophyll-a, TSI(chla) categories, pct ag
 
 #agriculture -- is 500m buffer best? Other options include 100m buffer (probably too small) and hu12 watershed
 pct.ag<-lagosne_select(table="buffer500m.lulc", vars=c("lagoslakeid","buffer500m_nlcd2001_pct_82","buffer500m_nlcd2006_pct_82","buffer500m_nlcd2011_pct_82"))
+# pct.ag<-lagosne_select(table="hu12.lulc", vars=c("lagoslakeid","hu12_nlcd2001_pct_82","hu12_nlcd2006_pct_82","hu12_nlcd2011_pct_82"))
 pct.ag<-pct.ag[pct.ag$lagoslakeid %in% analysislakes$lakeinfo$lagoslakeid,]
 pct.ag.avg<-data.frame(lagoslakeid=pct.ag$lagoslakeid, pct.ag=rowMeans(pct.ag[,2:4]))
 
@@ -180,37 +210,37 @@ modvars.accndvi.philt<-modvars.accndvi[modvars.accndvi$accndvip.ts2<0.2,]
 gls.coh.accndvi.st<-gls(accndvicoh.ts1 ~ maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi,
                        correlation=corExp(form = ~ nhd_lat + nhd_long))
 summary(gls.coh.accndvi.st)
-dredge.coh.accndvi.st<-dredge(gls.coh.accndvi.st, beta="sd") #intercept only is best model. Disappointing.
+suppressWarnings(dredge.coh.accndvi.st<-dredge(gls.coh.accndvi.st, beta="sd")) #intercept only is best model. Disappointing.
 print(head(dredge.coh.accndvi.st))
 
 gls.p.accndvi.st<-gls(accndvip.ts1 ~ tslength + maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi,
                        correlation=corExp(form = ~ nhd_lat + nhd_long))
 summary(gls.p.accndvi.st)
-dredge.p.accndvi.st<-dredge(gls.p.accndvi.st, beta="sd") #intercept only is best model. Disappointing.
+suppressWarnings(dredge.p.accndvi.st<-dredge(gls.p.accndvi.st, beta="sd")) #intercept only is best model. Disappointing.
 print(head(dredge.p.accndvi.st))
 
 gls.phi.accndvi.st<-gls(cos(accndviphi.ts1) ~ maxdepth + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi.phist) #remove ftype b/c only lakes
 summary(gls.phi.accndvi.st)
-dredge.phi.accndvi.st<-dredge(gls.phi.accndvi.st, beta="sd") #intercept only is best model. Disappointing.
+suppressWarnings(dredge.phi.accndvi.st<-dredge(gls.phi.accndvi.st, beta="sd")) #intercept only is best model. Disappointing.
 print(head(dredge.phi.accndvi.st))
 
 #long timescales
 gls.coh.accndvi.lt<-gls(accndvicoh.ts2 ~ maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi,
                        correlation=corExp(form = ~ nhd_lat + nhd_long))
 summary(gls.coh.accndvi.lt)
-dredge.coh.accndvi.lt<-dredge(gls.coh.accndvi.lt, beta="sd") #intercept only is best model. Disappointing.
+suppressWarnings(dredge.coh.accndvi.lt<-dredge(gls.coh.accndvi.lt, beta="sd")) #intercept only is best model. Disappointing.
 print(head(dredge.coh.accndvi.lt))
 
 gls.p.accndvi.lt<-gls(accndvip.ts2 ~ tslength + maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi,
                        correlation=corExp(form = ~ nhd_lat + nhd_long))
 summary(gls.p.accndvi.lt)
-dredge.p.accndvi.lt<-dredge(gls.p.accndvi.lt, beta="sd") #intercept only is best model. Disappointing.
+suppressWarnings(dredge.p.accndvi.lt<-dredge(gls.p.accndvi.lt, beta="sd")) #intercept only is best model. Disappointing.
 print(head(dredge.p.accndvi.lt))
 
 gls.phi.accndvi.lt<-gls(cos(accndviphi.ts2) ~ maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + huc2_code, data=modvars.accndvi.philt,
                        correlation=corExp(form = ~ nhd_lat + nhd_long))
 summary(gls.phi.accndvi.lt)
-dredge.phi.accndvi.lt<-dredge(gls.phi.accndvi.lt, beta="sd") #intercept only is best model. Disappointing.
+suppressWarnings(dredge.phi.accndvi.lt<-dredge(gls.phi.accndvi.lt, beta="sd")) #intercept only is best model. Disappointing.
 print(head(dredge.phi.accndvi.lt))
 ```
 
@@ -219,32 +249,32 @@ GLS models sucked, but inspection of results suggested that mixed effects models
 ```{r mixed modelling, echo=TRUE, cache=FALSE}
 lme.coh.accndvi.st<-lmer(accndvicoh.ts1 ~ maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + (1|huc2_code), data=modvars.accndvi, na.action="na.fail")
 summary(lme.coh.accndvi.st)
-dredge.coh.accndvi.st<-dredge(lme.coh.accndvi.st, beta="sd") #intercept only is best model. Disappointing.
+suppressWarnings(dredge.coh.accndvi.st<-dredge(lme.coh.accndvi.st, beta="sd")) #intercept only is best model. Disappointing.
 print(head(dredge.coh.accndvi.st))
 
 lme.p.accndvi.st<-lmer(accndvip.ts1 ~ tslength + maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + (1|huc2_code), data=modvars.accndvi, na.action="na.fail")
 summary(lme.p.accndvi.st)
-dredge.p.accndvi.st<-dredge(lme.p.accndvi.st, beta="sd") #intercept only is best model. Disappointing.
+suppressWarnings(dredge.p.accndvi.st<-dredge(lme.p.accndvi.st, beta="sd")) #intercept only is best model. Disappointing.
 print(head(dredge.p.accndvi.st))
 
 lme.phi.accndvi.st<-lmer(accndviphi.ts1 ~ maxdepth + lake_area_ha + pct.ag + chla + tsi.cat + (1|huc2_code), data=modvars.accndvi.phist, na.action="na.fail")
 summary(lme.phi.accndvi.st)
-dredge.phi.accndvi.st<-dredge(lme.phi.accndvi.st, beta="sd") #model with TSI is unconvincingly better than intercept-only (dAIC = 0.92)
+suppressWarnings(dredge.phi.accndvi.st<-dredge(lme.phi.accndvi.st, beta="sd")) #model with TSI is unconvincingly better than intercept-only (dAIC = 0.92)
 print(head(dredge.phi.accndvi.st))
 
 lme.coh.accndvi.lt<-lmer(accndvicoh.ts2 ~ maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + (1|huc2_code), data=modvars.accndvi, na.action="na.fail")
 summary(lme.coh.accndvi.lt)
-dredge.coh.accndvi.lt<-dredge(lme.coh.accndvi.lt, beta="sd") #lake type is marginal improvement over intercept only (dAIC = 0.1)
+suppressWarnings(dredge.coh.accndvi.lt<-dredge(lme.coh.accndvi.lt, beta="sd")) #lake type is marginal improvement over intercept only (dAIC = 0.1)
 print(head(dredge.coh.accndvi.lt))
 
 lme.p.accndvi.lt<-lmer(accndvip.ts2 ~ tslength + maxdepth + nhd_ftype + lake_area_ha + pct.ag + chla + tsi.cat + (1|huc2_code), data=modvars.accndvi, na.action="na.fail")
 summary(lme.p.accndvi.lt)
-dredge.p.accndvi.lt<-dredge(lme.p.accndvi.lt, beta="sd") #intercept only is best model. Disappointing.
+suppressWarnings(dredge.p.accndvi.lt<-dredge(lme.p.accndvi.lt, beta="sd")) #intercept only is best model. Disappointing.
 print(head(dredge.p.accndvi.lt))
 
 lme.phi.accndvi.lt<-lmer(accndviphi.ts2 ~ maxdepth + lake_area_ha + pct.ag + chla + tsi.cat + (1|huc2_code), data=modvars.accndvi.philt, na.action="na.fail")
 summary(lme.phi.accndvi.lt)
-dredge.phi.accndvi.lt<-dredge(lme.phi.accndvi.lt, beta="sd") #model with TSI is unconvincingly better than intercept-only (dAIC = 0.92)
+suppressWarnings(dredge.phi.accndvi.lt<-dredge(lme.phi.accndvi.lt, beta="sd")) #model with TSI is unconvincingly better than intercept-only (dAIC = 0.92)
 print(head(dredge.phi.accndvi.lt))
 
 ```
