@@ -27,25 +27,32 @@ This document organizes for openness and reproducibility analyses of the tempora
 
 ```{r limno import and formatting, echo=TRUE, cache=TRUE}
 
+##updated cleanAnnualts on 5/5/19
+
 lakes_to_get<-read.csv("~/GitHub/AquaTerrSynch/AnalysisCode/lakes20yrs_chla.csv")$x
 
-lagoslakes.raw<-makeLAGOSannualts(lakes_to_get, infovars=c("lake_area_ha", "lake_perim_meters", "nhd_ftype", "hu4_zoneid"), tsvars=c("chla"), 
+lagoslakes.raw<-makeLAGOSannualts(lakes_to_get, infovars=c("lake_area_ha", "lake_perim_meters", "nhd_ftype", "nhd_fcode", "hu4_zoneid", 
+                                                           "hu12_zoneid", "state_zoneid", "elevation_m"), tsvars=c("chla"), 
                                   minmos=3, minobs=3, timespan=c(1989,2018))
 lagoslakes.cln<-cleanAnnualts(lagoslakes.raw)
 
 rm(lakes_to_get)
 
 MNMPCAlakes.raw<-makeMNMPCAannualts(dir="/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/LAGOS Extended/MN_MPCA",
-                                    infovars=c("lake_area_ha", "lake_perim_meters", "nhd_ftype", "hu4_zoneid"), minmos=3, minobs=3, timespan=c(1989,2018))
+                                   infovars=c("lake_area_ha", "lake_perim_meters", "nhd_ftype", "nhd_fcode", "hu4_zoneid","hu12_zoneid", 
+                                              "state_zoneid", 
+                                              "elevation_m"), minmos=3, minobs=3, timespan=c(1989,2018))
 MNMPCAlakes.raw<-fixNamestoLAGOS(MNMPCAlakes.raw,"Minnesota MPCA")
 MNMPCAlakes.cln<-cleanAnnualts(MNMPCAlakes.raw)
 
 WIDNRlakes.raw<-makeWIDNRannualts(dir="/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/LAGOS Extended/WI_DNR",
-                                  infovars=c("lake_area_ha", "lake_perim_meters", "nhd_ftype", "hu4_zoneid"), minmos=3, minobs=3, timespan=c(1989,2018))
+                                  infovars=c("lake_area_ha", "lake_perim_meters", "nhd_ftype", "nhd_fcode", "hu4_zoneid","hu12_zoneid", 
+                                             "state_zoneid", 
+                                             "elevation_m"), minmos=3, minobs=3, timespan=c(1989,2018))
 WIDNRlakes.raw<-fixNamestoLAGOS(WIDNRlakes.raw, "Wisconsin DNR")
 WIDNRlakes.cln<-cleanAnnualts(WIDNRlakes.raw)
 
-#IowaALMlakes<-makeIowaALMannualts(almdat="/Users/jonahtanwalter/Box Sync/NSF EAGER Synchrony/Data/Iowa Synchrony Lakes.csv")
+#IowaALMlakes<-makeIowaALMannualts(almdat="/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/Iowa Synchrony Lakes.csv")
 
 analysislakes<-list(lakeinfo=rbind(lagoslakes.cln$lakeinfo,MNMPCAlakes.cln$lakeinfo,WIDNRlakes.cln$lakeinfo),
                     lakedata=c(lagoslakes.cln$lakedata, MNMPCAlakes.cln$lakedata, WIDNRlakes.cln$lakedata))
