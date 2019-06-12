@@ -90,8 +90,12 @@ cleanAnnualts<-function(indat, ymin=20, maxNA=2, optim="chla", timespan=NULL, fi
       }
       if(sum(rle.opt$lengths[rle.opt$values])>(ymin-maxNA) & 
          sum(rle.opt$lengths[!rle.opt$values])<=maxNA &
-         sum(rle.opt$lenghts)>ymin &
          nacheck(rle.opt)){break}
+    }
+    
+    if(length(opt.out) < ymin){
+      droplakes<-c(droplakes, lind)
+      next
     }
     
     if(lind %in% droplakes){next}

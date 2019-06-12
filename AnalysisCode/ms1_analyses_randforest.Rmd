@@ -20,6 +20,7 @@ library(lmerTest)
 library(viridis)
 library(fields)
 
+
 rm(list=ls())
 
 ```
@@ -51,9 +52,8 @@ analysislakes$lakeinfo<-analysislakes$lakeinfo[!sapply(analysislakes$lakedata, f
 analysislakes$lakedata<-analysislakes$lakedata[!sapply(analysislakes$lakedata, function(x){any(is.na(x))})]
 
 analysislakes$lakeinfo$tslength<-analysislakes$lakeinfo$end-analysislakes$lakeinfo$start+1
-# analysislakes$lakedata<-analysislakes$lakedata[analysislakes$lakeinfo$tslength >= 20]
-# analysislakes$lakeinfo<-analysislakes$lakeinfo[analysislakes$lakeinfo$tslength >= 20,]
-
+# analysislakes$lakedata<-analysislakes$lakedata[!analysislakes$lakeinfo$tslength < 20]
+# analysislakes$lakeinfo<-analysislakes$lakeinfo[!analysislakes$lakeinfo$tslength < 20,]
 
 ```
 
@@ -109,7 +109,7 @@ print(coh.chlaXmaxndvi$maxndviphi.ts1[coh.chlaXmaxndvi$maxndvip.ts1<alpha]/pi)
 
 phicls<-c(-1,-.75,-0.25,0.25,0.75,1)
 
-hist(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts1<0.3]/pi, main="Accumulated NDVI, short timescales", xlab="Phase (pi)", ylab="Frequency", breaks=phicls)
+hist(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts1<0.2]/pi, main="Accumulated NDVI, short timescales", xlab="Phase (pi)", ylab="Frequency", breaks=phicls)
 #hist(coh.chlaXmaxndvi$maxndviphi.ts1[coh.chlaXmaxndvi$maxndvip.ts1<0.2]/pi, main="Maximum NDVI, short timescales", xlab="Phase (pi)", ylab="Frequency", breaks=5)
 
 #long timescales
@@ -126,9 +126,8 @@ sum(coh.chlaXmaxndvi$maxndvip.ts2<alpha)/nrow(coh.chlaXmaxndvi)
 print(coh.chlaXaccndvi$accndviphi.ts2[coh.chlaXaccndvi$accndvip.ts2<alpha]/pi)
 print(coh.chlaXmaxndvi$maxndviphi.ts2[coh.chlaXmaxndvi$maxndvip.ts2<alpha]/pi)
 
-hist(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts2<0.3]/pi, main="Accumulated NDVI, long timescales", xlab="Phase (pi)", ylab="Frequency", breaks=phicls)
+hist(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts2<0.2]/pi, main="Accumulated NDVI, long timescales", xlab="Phase (pi)", ylab="Frequency", breaks=phicls)
 #hist(coh.chlaXmaxndvi$maxndviphi.ts1[coh.chlaXmaxndvi$maxndvicoh.ts2>0.6]/pi, main="Maximum NDVI, short timescales", xlab="Phase (pi)", ylab="Frequency", breaks=5)
-
 
 ```
 
@@ -238,6 +237,7 @@ hist(predictors$chla)
 hist(log10(predictors$chla))
 hist(predictors$tsi)
 table(predictors$tsi.cat)
+hist(predictors$cv.accndvi)
 
 predictors$log10_lake_area_ha<-log10(predictors$lake_area_ha)
 predictors$log10_lake_perim_meters<-log10(predictors$lake_perim_meters)
@@ -256,127 +256,62 @@ modvars.accndvi<-modvars.accndvi[!is.na(modvars.accndvi$pct.ag),]
 modvars.accndvi.phist<-modvars.accndvi[modvars.accndvi$accndvip.ts1<0.3,]
 modvars.accndvi.philt<-modvars.accndvi[modvars.accndvi$accndvip.ts2<0.3,]
 
-modvars.accndvi[modvars.accndvi$tslength < 20,]
+
 
 ```
 
 
-```{r gls modelling, echo=TRUE, cache=FALSE}
-#short timescales
-gls.coh.accndvi.st<-gls(accndvicoh.ts1 ~ log10_maxdepth + log10_lake_area_ha + log10_pct.ag + log10_chla + tsi.cat + cv.accndvi, 
-                        data=modvars.accndvi,
-                        correlation=corExp(form = ~ nhd_lat + nhd_long))
-summary(gls.coh.accndvi.st)
+```{r modelling, echo=TRUE, cache=FALSE}
 
-hist(predict(gls.coh.accndvi.st))
-plot(predict(gls.coh.accndvi.st), modvars.accndvi$accndvicoh.ts1, ylim=c(0,1), xlim=c(0,1),
-     ylab="empirical", xlab="predicted", main="Coherence, short ts")
+library(partykit)
+
+cforest.st<-cforest(accndvicoh.ts1 ~ lake_area_ha + lake_perim_meters + maxdepth + pct.ag + chla + tsi + hu4_zoneid + cv.accndvi, data=modvars.accndvi)
+predcoh.st<-predict.cforest(cforest.st, newdata=modvars.accndvi)
+hist(predcoh.st)
+hist(modvars.accndvi$accndvicoh.ts1)
+plot(predcoh.st, modvars.accndvi$accndvicoh.ts1, xlab="predicted", ylab="empirical", main="Coherence, short ts",
+     xlim=c(0,1), ylim=c(0,1))
 abline(a=0,b=1)
-cor.test(predict(gls.coh.accndvi.st),modvars.accndvi$accndvicoh.ts1)
+cor.test(predcoh.st,modvars.accndvi$accndvicoh.ts1)
+varimp.coh.st<-varimp.cforest(cforest.st)
+print(varimp.coh.st)
 
-suppressWarnings(dredge.coh.accndvi.st<-dredge(gls.coh.accndvi.st, beta="sd")) #intercept only is best model. Disappointing.
-print(head(dredge.coh.accndvi.st))
-
-modavg.coh.accndvi.st<-model.avg(dredge.coh.accndvi.st, fit=T)
-modavg.coh.accndvi.st$importance
-
-hist(predict(modavg.coh.accndvi.st))
-plot(predict(modavg.coh.accndvi.st), modvars.accndvi$accndvicoh.ts1, ylim=c(0,1), xlim=c(0,1),
-     ylab="empirical", xlab="predicted", main="Coherence, short ts")
+cforest.lt<-cforest(accndvicoh.ts2 ~ lake_area_ha + lake_perim_meters + maxdepth + pct.ag + chla + tsi + hu4_zoneid + cv.accndvi, data=modvars.accndvi)
+predcoh.lt<-predict.cforest(cforest.lt, newdata=modvars.accndvi)
+hist(predcoh.lt)
+hist(modvars.accndvi$accndvicoh.ts2)
+plot(predcoh.lt, modvars.accndvi$accndvicoh.ts2, xlab="predicted", ylab="empirical", main="Coherence, long st",
+     xlim=c(0,1), ylim=c(0,1))
 abline(a=0,b=1)
-cor.test(predict(modavg.coh.accndvi.st),modvars.accndvi$accndvicoh.ts1)
+cor.test(predcoh.lt,modvars.accndvi$accndvicoh.ts2)
+varimp.coh.lt<-varimp.cforest(cforest.lt)
+print(varimp.coh.lt)
 
-gls.phi.accndvi.st<-gls(cos(accndviphi.ts1) ~ log10_maxdepth + log10_lake_area_ha + log10_pct.ag + log10_chla + tsi.cat + cv.accndvi, 
-                        data=modvars.accndvi.phist,
-                        correlation=corExp(form = ~ nhd_lat + nhd_long)) #remove ftype b/c only lakes
-summary(gls.phi.accndvi.st)
-suppressWarnings(dredge.phi.accndvi.st<-dredge(gls.phi.accndvi.st, beta="sd")) #intercept only is best model. Disappointing.
-print(head(dredge.phi.accndvi.st))
 
-#long timescales
-gls.coh.accndvi.lt<-gls(accndvicoh.ts2 ~ log10_maxdepth + log10_lake_area_ha + log10_pct.ag + log10_chla + tsi.cat + cv.accndvi, 
-                        data=modvars.accndvi,
-                        correlation=corExp(form = ~ nhd_lat + nhd_long))
-summary(gls.coh.accndvi.lt)
-suppressWarnings(dredge.coh.accndvi.lt<-dredge(gls.coh.accndvi.lt, beta="sd")) #intercept only is best model. Disappointing.
-print(head(dredge.coh.accndvi.lt))
+cforest.phi.st<-cforest(cos(accndviphi.ts1) ~ lake_area_ha + lake_perim_meters + maxdepth + pct.ag + chla + tsi + hu4_zoneid + cv.accndvi, 
+                        data=modvars.accndvi.phist)
+predphi.st<-predict.cforest(cforest.phi.st, newdata=modvars.accndvi.phist)
+hist(predphi.st)
+hist(cos(modvars.accndvi.phist$accndviphi.ts1))
+plot(predphi.st, cos(modvars.accndvi.phist$accndviphi.ts1), xlab="predicted", ylab="empirical", main="cos(phase), short ts",
+     xlim=c(-1,1), ylim=c(-1,1))
+abline(a=0,b=1)
+cor.test(predphi.st,cos(modvars.accndvi.phist$accndviphi.ts1))
+varimp.phi.st<-varimp.cforest(cforest.phi.st)
+print(varimp.phi.st)
 
-gls.phi.accndvi.lt<-gls(cos(accndviphi.ts2) ~ log10_maxdepth + log10_lake_area_ha + log10_pct.ag + log10_chla + tsi.cat + cv.accndvi, 
-                        data=modvars.accndvi.philt,
-                        correlation=corExp(form = ~ nhd_lat + nhd_long))
-summary(gls.phi.accndvi.lt)
-suppressWarnings(dredge.phi.accndvi.lt<-dredge(gls.phi.accndvi.lt, beta="sd")) #intercept only is best model. Disappointing.
-print(head(dredge.phi.accndvi.lt))
-```
-Early iterations of this made us wonder of things differed by region, so we tested these relationships broken down into 3 regions.
-The regions are: 1) Missouri; 2) Minnesota, Wisconsin, and Michigan; 3) Pennsylvania, New York, Rhode Island, Vermont, New Hampshire, Maine.
+cforest.phi.lt<-cforest(cos(accndviphi.ts2) ~ lake_area_ha + lake_perim_meters + maxdepth + pct.ag + chla + tsi + hu4_zoneid + cv.accndvi, 
+                        data=modvars.accndvi.philt)
+predphi.lt<-predict.cforest(cforest.phi.lt, newdata=modvars.accndvi.philt)
+hist(predphi.lt)
+hist(cos(modvars.accndvi.philt$accndviphi.ts2))
+plot(predphi.lt, cos(modvars.accndvi.philt$accndviphi.ts2), xlab="predicted", ylab="empirical", main="cos(phase), short ts",
+     xlim=c(-1,1), ylim=c(-1,1))
+abline(a=0,b=1)
+cor.test(predphi.lt,cos(modvars.accndvi.philt$accndviphi.ts2))
+varimp.phi.lt<-varimp.cforest(cforest.phi.lt)
+print(varimp.phi.lt)
 
-```{r gls modeling r1, echo=TRUE, cache=FALSE}
-# #Region 1: Missouri
-# 
-# modvars.accndvi.r1<-modvars.accndvi[modvars.accndvi$state_name=="Missouri",]
-# # modvars.accndvi.philt.r1<-modvars.accndvi.philt[modvars.accndvi.philt$state_name=="Missouri",]
-# # modvars.accndvi.phist.r1<-modvars.accndvi.phist[modvars.accndvi.phist$state_name=="Missouri",]
-# 
-# #short timescales
-# gls.coh.accndvi.st<-gls(accndvicoh.ts1 ~ log10_maxdepth + log10_lake_area_ha + log10_pct.ag + log10_chla + tsi.cat + cv.accndvi, 
-#                         data=modvars.accndvi.r1,
-#                         correlation=corExp(form = ~ nhd_lat + nhd_long))
-# summary(gls.coh.accndvi.st)
-# suppressWarnings(dredge.coh.accndvi.st<-dredge(gls.coh.accndvi.st, beta="sd")) #intercept only is best model. Disappointing.
-# print(head(dredge.coh.accndvi.st))
-# 
-# #long timescales
-# gls.coh.accndvi.lt<-gls(accndvicoh.ts2 ~ log10_maxdepth + log10_lake_area_ha + log10_pct.ag + log10_chla + tsi.cat + cv.accndvi, 
-#                         data=modvars.accndvi.r1,
-#                         correlation=corExp(form = ~ nhd_lat + nhd_long))
-# summary(gls.coh.accndvi.lt)
-# suppressWarnings(dredge.coh.accndvi.lt<-dredge(gls.coh.accndvi.lt, beta="sd")) #intercept only is best model. Disappointing.
-# print(head(dredge.coh.accndvi.lt))
 
 ```
 
-```{r gls modeling r2, echo=TRUE, cache=FALSE}
-# #Region 2: Minnesota, Wisconsin, Michigan
-# 
-# modvars.accndvi.r2<-modvars.accndvi[modvars.accndvi$state_name %in% c("Minnesota","Wisconsin","Michigan"),]
-# 
-# #short timescales
-# gls.coh.accndvi.st<-gls(accndvicoh.ts1 ~ log10_maxdepth + log10_lake_area_ha + log10_pct.ag + log10_chla + tsi.cat + cv.accndvi, 
-#                         data=modvars.accndvi.r2,
-#                         correlation=corExp(form = ~ nhd_lat + nhd_long))
-# summary(gls.coh.accndvi.st)
-# suppressWarnings(dredge.coh.accndvi.st<-dredge(gls.coh.accndvi.st, beta="sd")) #intercept only is best model. Disappointing.
-# print(head(dredge.coh.accndvi.st))
-# 
-# #long timescales
-# gls.coh.accndvi.lt<-gls(accndvicoh.ts2 ~ log10_maxdepth + log10_lake_area_ha + log10_pct.ag + log10_chla + tsi.cat + cv.accndvi, 
-#                         data=modvars.accndvi.r2,
-#                         correlation=corExp(form = ~ nhd_lat + nhd_long))
-# summary(gls.coh.accndvi.lt)
-# suppressWarnings(dredge.coh.accndvi.lt<-dredge(gls.coh.accndvi.lt, beta="sd")) #intercept only is best model. Disappointing.
-# print(head(dredge.coh.accndvi.lt))
-
-```
-```{r gls modeling r3, echo=TRUE, cache=FALSE}
-# #Region 2: Minnesota, Wisconsin, Michigan
-# 
-# modvars.accndvi.r3<-modvars.accndvi[modvars.accndvi$state_name %in% c("Pennsylvania","New York","Rhode Island","Vermont","New Hampshire","Maine"),]
-# 
-# #short timescales
-# gls.coh.accndvi.st<-gls(accndvicoh.ts1 ~ log10_maxdepth + log10_lake_area_ha + log10_pct.ag + log10_chla + tsi.cat + cv.accndvi, 
-#                         data=modvars.accndvi.r3,
-#                         correlation=corExp(form = ~ nhd_lat + nhd_long))
-# summary(gls.coh.accndvi.st)
-# suppressWarnings(dredge.coh.accndvi.st<-dredge(gls.coh.accndvi.st, beta="sd")) #intercept only is best model. Disappointing.
-# print(head(dredge.coh.accndvi.st))
-# 
-# #long timescales
-# gls.coh.accndvi.lt<-gls(accndvicoh.ts2 ~ log10_maxdepth + log10_lake_area_ha + log10_pct.ag + log10_chla + tsi.cat + cv.accndvi, 
-#                         data=modvars.accndvi.r3,
-#                         correlation=corExp(form = ~ nhd_lat + nhd_long))
-# summary(gls.coh.accndvi.lt)
-# suppressWarnings(dredge.coh.accndvi.lt<-dredge(gls.coh.accndvi.lt, beta="sd")) #intercept only is best model. Disappointing.
-# print(head(dredge.coh.accndvi.lt))
-
-```
