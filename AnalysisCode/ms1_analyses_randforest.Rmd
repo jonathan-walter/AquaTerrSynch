@@ -19,7 +19,9 @@ library(nlme)
 library(lmerTest)
 library(viridis)
 library(fields)
-
+#library(partykit)
+library(pdp)
+library(party)
 
 rm(list=ls())
 
@@ -261,57 +263,101 @@ modvars.accndvi.philt<-modvars.accndvi[modvars.accndvi$accndvip.ts2<0.3,]
 ```
 
 
-```{r modelling, echo=TRUE, cache=FALSE}
+```{r modellingCoherence, echo=TRUE, cache=FALSE}
 
-library(partykit)
-
-cforest.st<-cforest(accndvicoh.ts1 ~ lake_area_ha + lake_perim_meters + maxdepth + pct.ag + chla + tsi + hu4_zoneid + cv.accndvi, data=modvars.accndvi)
-predcoh.st<-predict.cforest(cforest.st, newdata=modvars.accndvi)
+# cforest.st<-partykit::cforest(accndvicoh.ts1 ~ lake_area_ha + lake_perim_meters + maxdepth + pct.ag + chla + tsi.cat + hu4_zoneid + cv.accndvi, 
+#                     data=modvars.accndvi, ntree=20000)
+cforest.st<-party::cforest(accndvicoh.ts1 ~ lake_area_ha + lake_perim_meters + maxdepth + pct.ag + chla + tsi.cat + hu4_zoneid + cv.accndvi, 
+                    data=modvars.accndvi, controls=cforest_control(ntree=80000))
+predcoh.st<-predict(cforest.st, newdata=modvars.accndvi,type="response")
 hist(predcoh.st)
 hist(modvars.accndvi$accndvicoh.ts1)
 plot(predcoh.st, modvars.accndvi$accndvicoh.ts1, xlab="predicted", ylab="empirical", main="Coherence, short ts",
      xlim=c(0,1), ylim=c(0,1))
 abline(a=0,b=1)
 cor.test(predcoh.st,modvars.accndvi$accndvicoh.ts1)
-varimp.coh.st<-varimp.cforest(cforest.st)
-print(varimp.coh.st)
+varimp.coh.st<-varimp(cforest.st)
+print(varimp.coh.st[order(varimp.coh.st, decreasing=T)])
 
-cforest.lt<-cforest(accndvicoh.ts2 ~ lake_area_ha + lake_perim_meters + maxdepth + pct.ag + chla + tsi + hu4_zoneid + cv.accndvi, data=modvars.accndvi)
-predcoh.lt<-predict.cforest(cforest.lt, newdata=modvars.accndvi)
-hist(predcoh.lt)
-hist(modvars.accndvi$accndvicoh.ts2)
+
+
+partial(cforest.st, pred.var="lake_perim_meters", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.st, pred.var="pct.ag", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.st, pred.var="lake_area_ha", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.st, pred.var="maxdepth", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.st, pred.var="chla", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.st, pred.var="cv.accndvi", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.st, pred.var="tsi.cat", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.st, pred.var="hu4_zoneid", train=modvars.accndvi, type="regression", plot=T)
+
+cforest.lt<-party::cforest(accndvicoh.ts2 ~ lake_area_ha + lake_perim_meters + maxdepth + pct.ag + chla + tsi.cat + hu4_zoneid + cv.accndvi, 
+                    data=modvars.accndvi, controls=cforest_control(ntree=80000))
+predcoh.lt<-predict(cforest.lt, newdata=modvars.accndvi)
+# hist(predcoh.lt)
+# hist(modvars.accndvi$accndvicoh.ts2)
 plot(predcoh.lt, modvars.accndvi$accndvicoh.ts2, xlab="predicted", ylab="empirical", main="Coherence, long st",
      xlim=c(0,1), ylim=c(0,1))
 abline(a=0,b=1)
 cor.test(predcoh.lt,modvars.accndvi$accndvicoh.ts2)
-varimp.coh.lt<-varimp.cforest(cforest.lt)
-print(varimp.coh.lt)
+varimp.coh.lt<-varimp(cforest.lt)
+print(varimp.coh.lt[order(varimp.coh.lt, decreasing=T)])
 
 
-cforest.phi.st<-cforest(cos(accndviphi.ts1) ~ lake_area_ha + lake_perim_meters + maxdepth + pct.ag + chla + tsi + hu4_zoneid + cv.accndvi, 
-                        data=modvars.accndvi.phist)
-predphi.st<-predict.cforest(cforest.phi.st, newdata=modvars.accndvi.phist)
+
+partial(cforest.lt, pred.var="cv.accndvi", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.lt, pred.var="hu4_zoneid", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.lt, pred.var="pct.ag", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.lt, pred.var="lake_area_ha", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.lt, pred.var="lake_perim_meters", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.lt, pred.var="chla", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.lt, pred.var="tsi.cat", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.lt, pred.var="maxdepth", train=modvars.accndvi, type="regression", plot=T)
+
+```
+
+```{r modellingPhase, echo=TRUE, cache=FALSE}
+
+cforest.phi.st<-cforest(cos(accndviphi.ts1) ~ lake_area_ha + lake_perim_meters + maxdepth + pct.ag + chla + tsi.cat + hu4_zoneid + cv.accndvi, 
+                        data=modvars.accndvi.phist,controls=cforest_control(ntree=30000))
+predphi.st<-predict(cforest.phi.st, newdata=modvars.accndvi.phist)
 hist(predphi.st)
 hist(cos(modvars.accndvi.phist$accndviphi.ts1))
 plot(predphi.st, cos(modvars.accndvi.phist$accndviphi.ts1), xlab="predicted", ylab="empirical", main="cos(phase), short ts",
      xlim=c(-1,1), ylim=c(-1,1))
 abline(a=0,b=1)
 cor.test(predphi.st,cos(modvars.accndvi.phist$accndviphi.ts1))
-varimp.phi.st<-varimp.cforest(cforest.phi.st)
-print(varimp.phi.st)
+varimp.phi.st<-varimp(cforest.phi.st)
+print(varimp.phi.st[order(varimp.phi.st,decreasing=TRUE)])
 
-cforest.phi.lt<-cforest(cos(accndviphi.ts2) ~ lake_area_ha + lake_perim_meters + maxdepth + pct.ag + chla + tsi + hu4_zoneid + cv.accndvi, 
-                        data=modvars.accndvi.philt)
-predphi.lt<-predict.cforest(cforest.phi.lt, newdata=modvars.accndvi.philt)
+partial(cforest.phi.st, pred.var="cv.accndvi", train=modvars.accndvi.phist, type="regression", plot=T)
+partial(cforest.phi.st, pred.var="hu4_zoneid", train=modvars.accndvi.phist, type="regression", plot=T)
+partial(cforest.phi.st, pred.var="pct.ag", train=modvars.accndvi.phist, type="regression", plot=T)
+partial(cforest.phi.st, pred.var="lake_area_ha", train=modvars.accndvi.phist, type="regression", plot=T)
+partial(cforest.phi.st, pred.var="lake_perim_meters", train=modvars.accndvi.phist, type="regression", plot=T)
+partial(cforest.phi.st, pred.var="chla", train=modvars.accndvi.phist, type="regression", plot=T)
+partial(cforest.phi.st, pred.var="tsi.cat", train=modvars.accndvi.phist, type="regression", plot=T)
+partial(cforest.phi.st, pred.var="maxdepth", train=modvars.accndvi.phist, type="regression", plot=T)
+
+cforest.phi.lt<-cforest(cos(accndviphi.ts2) ~ lake_area_ha + lake_perim_meters + maxdepth + pct.ag + chla + tsi.cat + hu4_zoneid + cv.accndvi, 
+                        data=modvars.accndvi.philt,controls=cforest_control(ntree=30000))
+predphi.lt<-predict(cforest.phi.lt, newdata=modvars.accndvi.philt)
 hist(predphi.lt)
 hist(cos(modvars.accndvi.philt$accndviphi.ts2))
 plot(predphi.lt, cos(modvars.accndvi.philt$accndviphi.ts2), xlab="predicted", ylab="empirical", main="cos(phase), short ts",
      xlim=c(-1,1), ylim=c(-1,1))
 abline(a=0,b=1)
 cor.test(predphi.lt,cos(modvars.accndvi.philt$accndviphi.ts2))
-varimp.phi.lt<-varimp.cforest(cforest.phi.lt)
-print(varimp.phi.lt)
+varimp.phi.lt<-varimp(cforest.phi.lt)
+print(varimp.phi.lt[order(varimp.phi.lt, decreasing=TRUE)])
 
+partial(cforest.phi.lt, pred.var="hu4_zoneid", train=modvars.accndvi.philt, type="regression", plot=T)
+partial(cforest.phi.lt, pred.var="lake_area_ha", train=modvars.accndvi.philt, type="regression", plot=T)
+partial(cforest.phi.lt, pred.var="lake_perim_meters", train=modvars.accndvi.philt, type="regression", plot=T)
+partial(cforest.phi.lt, pred.var="chla", train=modvars.accndvi.philt, type="regression", plot=T)
+partial(cforest.phi.lt, pred.var="cv.accndvi", train=modvars.accndvi.philt, type="regression", plot=T)
+partial(cforest.phi.lt, pred.var="maxdepth", train=modvars.accndvi.philt, type="regression", plot=T)
+partial(cforest.phi.lt, pred.var="pct.ag", train=modvars.accndvi.philt, type="regression", plot=T)
+partial(cforest.phi.lt, pred.var="tsi.cat", train=modvars.accndvi.philt, type="regression", plot=T)
 
 ```
 
