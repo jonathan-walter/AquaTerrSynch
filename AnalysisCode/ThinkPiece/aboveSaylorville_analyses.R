@@ -155,6 +155,9 @@ print(no3Xtemp$bandp)
 
 #pdf("~/GitHub/AquaTerrSynch/AnalysisCode/ThinkPiece/FigX_AnalysisExample.pdf", width=6.5, height=8)
 
+tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/ThinkPiece/dmr_example.tif",
+     units="in", width=5, height=5, res=300)
+
 par(mfrow=c(2,2), mar=c(5.1,4.1,1.1,1.1))
 
 plot(no3, type="l")
@@ -162,4 +165,6 @@ plot(flow,type="l")
 
 plotmag(wt.no3)
 plotmag(wt.flow)
+
+dev.off()
 

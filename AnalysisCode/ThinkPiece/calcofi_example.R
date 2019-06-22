@@ -59,18 +59,18 @@ wt.sejo<-wt(dmat.cln[7,],years)
 wt.stle<-wt(dmat.cln[8,],years)
 wt.trsy<-wt(dmat.cln[9,],years)
 
-quartz()
-par(mfrow=c(5,2), mar=c(3,3,1,1))
-
-plotmag(wt.enmo,title="Engraulis mordax")
-plotmag(wt.mepr,title="Merluccius productus")
-plotmag(wt.sasa,title="Sardinops sagax")
-plotmag(wt.vilu,title="Vinciguerria lucetia")
-plotmag(wt.sexx,title="Sebastes spp.")
-plotmag(wt.lest,title="Leuroglossus stilbius")
-plotmag(wt.sejo,title="Sebasets jordani")
-plotmag(wt.stle,title="Stenobrachius leucopsarus")
-plotmag(wt.trsy,title="Trachurus symmetricus")
+# quartz()
+# par(mfrow=c(5,2), mar=c(3,3,1,1))
+# 
+# plotmag(wt.enmo,title="Engraulis mordax")
+# plotmag(wt.mepr,title="Merluccius productus")
+# plotmag(wt.sasa,title="Sardinops sagax")
+# plotmag(wt.vilu,title="Vinciguerria lucetia")
+# plotmag(wt.sexx,title="Sebastes spp.")
+# plotmag(wt.lest,title="Leuroglossus stilbius")
+# plotmag(wt.sejo,title="Sebasets jordani")
+# plotmag(wt.stle,title="Stenobrachius leucopsarus")
+# plotmag(wt.trsy,title="Trachurus symmetricus")
 
 enmoXsasa<-coh(dmat.cln[1,],dmat.cln[3,],years,norm="powall",sigma=1.01,sigmethod="fast")
 enmoXsasa<-bandtest(enmoXsasa,c(2,4))
@@ -78,7 +78,6 @@ enmoXsasa<-bandtest(enmoXsasa,c(4,10))
 enmoXsasa<-bandtest(enmoXsasa,c(10,26))
 enmoXsasa<-bandtest(enmoXsasa,c(2,26))
 print(enmoXsasa$bandp)
-
 
 enmoXsejo<-coh(dmat.cln[1,],dmat.cln[7,],years,norm="powall",sigma=1.01,sigmethod="fast")
 enmoXsejo<-bandtest(enmoXsejo,c(2,4))
@@ -100,3 +99,27 @@ sexxXlest<-bandtest(sexxXlest,c(4,10))
 sexxXlest<-bandtest(sexxXlest,c(10,26))
 sexxXlest<-bandtest(sexxXlest,c(2,26))
 print(sexxXlest$bandp)
+
+#Plotting
+
+## need to re-do using layout()
+
+tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/ThinkPiece/calcofi_example.tif",
+     units="in", height=5, width=5, res=300)
+
+par(mfrow=c(2,2), mar=c(2.1,2.1,1.1,1.1), oma=c(2.1,2.1,1.1,3), xpd=F)
+
+plot(years,dmat[5,], type="l", main="Sebastes spp.", xlab="",ylab="")
+plot(years,dmat[6,], type="l", main="Leuroglossus stilbius", xlab="", ylab="")
+plotmag(wt.sexx,colorbar=F)
+plotmag(wt.lest,colorbar=F)
+
+mtext("Time",1, outer=T, line=0.5)
+mtext("Larvae/10m2",2,outer=T, line=0.5, at=0.75)
+mtext("Timescale (yr)",2, outer=T, line=0.5, at=0.25)
+
+# par(new=T, fig=c(0.9,1,0,0.5), pty="m", mar=c(0,1.1,0,0))
+# image(as.matrix(1:50))
+
+dev.off()
+
