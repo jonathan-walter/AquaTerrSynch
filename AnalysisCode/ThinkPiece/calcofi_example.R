@@ -104,22 +104,35 @@ print(sexxXlest$bandp)
 
 ## need to re-do using layout()
 
+laymat<-matrix(1,nrow=2,ncol=11)
+laymat[1,6:10]<-2
+laymat[2,1:5]<-3
+laymat[2,6:10]<-4
+laymat[1,11]<-6
+laymat[2,11]<-5
+
+jetcolors <- c("#00007F", "blue", "#007FFF", "cyan", 
+               "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000")
+colorfill<-grDevices::colorRampPalette(jetcolors)
+
 tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/ThinkPiece/calcofi_example.tif",
-     units="in", height=5, width=5, res=300)
+    units="in", height=5, width=6.5, res=300)
 
-par(mfrow=c(2,2), mar=c(2.1,2.1,1.1,1.1), oma=c(2.1,2.1,1.1,3), xpd=F)
+layout(laymat)
 
-plot(years,dmat[5,], type="l", main="Sebastes spp.", xlab="",ylab="")
-plot(years,dmat[6,], type="l", main="Leuroglossus stilbius", xlab="", ylab="")
-plotmag(wt.sexx,colorbar=F)
-plotmag(wt.lest,colorbar=F)
+par(mar=c(2.1,2.1,1.5,1.1), xpd=F, oma=c(2.1,2.1,0,0))
 
-mtext("Time",1, outer=T, line=0.5)
-mtext("Larvae/10m2",2,outer=T, line=0.5, at=0.75)
+plot(years,dmat[5,], type="l", main="Rockfish", xlab="",ylab="")
+plot(years,dmat[6,], type="l", main="California smoothtongue", xlab="", ylab="")
+plotmag(wt.sexx,colorbar=F, xaxs="r", zlim=c(0,3))
+plotmag(wt.lest,colorbar=F, xaxs="r", zlim=c(0,3))
+
+image(y=seq(0,3,length.out=50),matrix(seq(0,3,length.out=50),nrow=1,ncol=50),xaxt="n",yaxt="n",col=colorfill(50))
+axis(2,at=pretty(Mod(c(wt.sexx$values,wt.lest$values)),n=5))
+
+mtext("Time",1, outer=T, line=0.65)
+mtext(expression(paste("Larvae 10m"^"-2")),2,outer=T, line=0.5, at=0.75)
 mtext("Timescale (yr)",2, outer=T, line=0.5, at=0.25)
-
-# par(new=T, fig=c(0.9,1,0,0.5), pty="m", mar=c(0,1.1,0,0))
-# image(as.matrix(1:50))
 
 dev.off()
 

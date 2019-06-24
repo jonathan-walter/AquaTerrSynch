@@ -148,6 +148,72 @@ no3Xtemp<-bandtest(no3Xtemp,b3)
 no3Xtemp<-bandtest(no3Xtemp,b4)
 print(no3Xtemp$bandp)
 
+#####################################################################################
+## plotting function--this is modified from the 'wsyn' function by Reuman et al.
+
+plotmag.JW<-function(object,zlims=NULL,neat=TRUE,colorfill=NULL,colorbar=TRUE,title=NULL,filename=NA,xlocs=NULL,ylocs=NULL,xlabs=NULL,ylabs=NULL,...)
+{
+  wav<-Mod(get_values(object))
+  times<-get_times(object)
+  timescales<-get_timescales(object)
+  
+  if(is.null(zlims)){
+    zlims<-range(wav,na.rm=T)
+  }else
+  {
+    rg<-range(wav,na.rm=T)
+    if (rg[1]<zlims[1] || rg[2]>zlims[2])
+    {
+      stop("Error in plotmag.tts: zlims must encompass the z axis range of what is being plotted")
+    }
+  }
+  if(neat){
+    inds<-which(!is.na(colMeans(wav,na.rm=T)))
+    wav<-wav[,inds]
+    timescales<-timescales[inds]
+  }
+  if(is.null(colorfill)){
+    jetcolors <- c("#00007F", "blue", "#007FFF", "cyan", 
+                   "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000")
+    colorfill<-grDevices::colorRampPalette(jetcolors)
+  }
+  if(is.null(xlocs)){
+    xlocs<-pretty(times,n=8)
+  }
+  if(is.null(ylocs)){
+    ylocs<-pretty(timescales,n=8)
+  }
+  if(is.null(xlabs)){
+    xlabs<-xlocs
+  }
+  if(is.null(ylabs)){
+    ylabs<-ylocs
+  }
+  
+  if (!is.na(filename))
+  {
+    grDevices::pdf(paste0(filename,".pdf"))
+  }
+  if (!colorbar)
+  {
+    graphics::image(x=times,y=log2(timescales),z=wav,xlab="",zlim=zlims,
+                    ylab="Timescale",axes=F,col=colorfill(100),main=title,...)
+    graphics::axis(1,at = xlocs,labels=xlabs)
+    graphics::axis(2,at = log2(ylocs),labels = ylabs)
+  }else
+  {
+    fields::image.plot(x=times,y=log2(timescales),z=wav,xlab="",zlim=zlims,
+                       ylab="Timescale",axes=F,col=colorfill(100),main=title,...)
+    graphics::axis(1,at = xlocs,labels=xlabs)
+    graphics::axis(2,at = log2(ylocs),labels = ylabs)
+  }
+  if (!is.na(filename))
+  {
+    grDevices::dev.off()
+  }
+}
+
+
 ############################################################################
 ## Nice plotting
 
@@ -155,16 +221,38 @@ print(no3Xtemp$bandp)
 
 #pdf("~/GitHub/AquaTerrSynch/AnalysisCode/ThinkPiece/FigX_AnalysisExample.pdf", width=6.5, height=8)
 
+laymat<-matrix(1,nrow=2,ncol=11)
+laymat[1,6:10]<-2
+laymat[2,1:5]<-3
+laymat[2,6:10]<-4
+laymat[1,11]<-6
+laymat[2,11]<-5
+
+jetcolors <- c("#00007F", "blue", "#007FFF", "cyan", 
+               "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000")
+colorfill<-grDevices::colorRampPalette(jetcolors)
+
 tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/ThinkPiece/dmr_example.tif",
-     units="in", width=5, height=5, res=300)
+    units="in", width=6.5, height=5, res=300)
 
-par(mfrow=c(2,2), mar=c(5.1,4.1,1.1,1.1))
+layout(laymat)
+par(mar=c(2.1,3.5,1.1,1.1),oma=c(2.1,0,0,0),mgp=c(2.2,0.8,0))
 
-plot(no3, type="l")
-plot(flow,type="l")
+plot(no3, type="l", xlab="", ylab=expression("NO"[3]*~(mu*"gL"^-1)), xaxt="n")
+axis(1,at=seq(0,500,by=60),labels=seq(1976,2016,by=5))
+plot(flow,type="l", xlab="", ylab="Flow (cfs)", xaxt="n")
+axis(1,at=seq(0,500,by=60),labels=seq(1976,2016,by=5))
 
-plotmag(wt.no3)
-plotmag(wt.flow)
+plotmag.JW(wt.no3, xaxs="r", colorbar=F, zlim=c(0,8), ylocs=c(0,6,12,24,48,96,192), ylabs=c(0,0.5,1,2,4,8,16),
+           xlocs=seq(0,500,by=60), xlabs=seq(1976,2016,by=5))
+plotmag.JW(wt.flow, xaxs="r", colorbar=F, zlim=c(0,8), ylocs=c(0,6,12,24,48,96,192), ylabs=c(0,0.5,1,2,4,8,16),
+           xlocs=seq(0,500,by=60), xlabs=seq(1976,2016,by=5))
+
+par(mar=c(2.1,2.1,1.1,1.1))
+image(y=seq(0,8,length.out=50),matrix(seq(0,8,length.out=50),nrow=1,ncol=50),xaxt="n",yaxt="n",col=colorfill(50))
+axis(2,at=pretty(Mod(c(wt.no3$values,wt.flow$values)),n=5))
+
+mtext("Time",1, outer=T, line=0.65)
 
 dev.off()
 
