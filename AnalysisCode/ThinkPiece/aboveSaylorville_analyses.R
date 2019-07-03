@@ -137,7 +137,7 @@ no3Xflow<-bandtest(no3Xflow,b1)
 no3Xflow<-bandtest(no3Xflow,b2)
 no3Xflow<-bandtest(no3Xflow,b3)
 no3Xflow<-bandtest(no3Xflow,b4)
-print(no3Xflow$bandp) #why isn't long-timescale band significant?
+print(no3Xflow$bandp)
 
 plot(no3Xflow$timescales, Mod(no3Xflow$coher))
 

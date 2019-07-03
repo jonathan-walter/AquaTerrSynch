@@ -115,8 +115,8 @@ jetcolors <- c("#00007F", "blue", "#007FFF", "cyan",
                "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000")
 colorfill<-grDevices::colorRampPalette(jetcolors)
 
-tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/ThinkPiece/calcofi_example.tif",
-    units="in", height=5, width=6.5, res=300)
+# tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/ThinkPiece/calcofi_example.tif",
+#     units="in", height=5, width=6.5, res=300)
 
 layout(laymat)
 
@@ -134,5 +134,5 @@ mtext("Time",1, outer=T, line=0.65)
 mtext(expression(paste("Larvae 10m"^"-2")),2,outer=T, line=0.5, at=0.75)
 mtext("Timescale (yr)",2, outer=T, line=0.5, at=0.25)
 
-dev.off()
+#dev.off()
 
