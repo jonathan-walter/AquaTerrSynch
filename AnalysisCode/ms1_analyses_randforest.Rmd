@@ -107,8 +107,13 @@ alpha=0.05
 sum(coh.chlaXaccndvi$accndvip.ts1<alpha)/nrow(coh.chlaXaccndvi)
 sum(coh.chlaXmaxndvi$maxndvip.ts1<alpha)/nrow(coh.chlaXmaxndvi)
 
-print(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts1<alpha]/pi) #only pattern is that lakes don't lead the landscape
-print(coh.chlaXmaxndvi$maxndviphi.ts1[coh.chlaXmaxndvi$maxndvip.ts1<alpha]/pi)
+print(cbind(coh.chlaXaccndvi$lagoslakeid, coh.chlaXaccndvi$accndvip.ts1)[coh.chlaXaccndvi$accndvip.ts1<alpha,])
+print(cbind(coh.chlaXaccndvi$lagoslakeid, coh.chlaXaccndvi$accndvip.ts2)[coh.chlaXaccndvi$accndvip.ts2<alpha,])
+
+cor(coh.chlaXaccndvi$accndvicoh.ts1,coh.chlaXaccndvi$accndvicoh.ts2)
+
+# print(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts1<alpha]/pi) #only pattern is that lakes don't lead the landscape
+# print(coh.chlaXmaxndvi$maxndviphi.ts1[coh.chlaXmaxndvi$maxndvip.ts1<alpha]/pi)
 
 phicls<-c(-1,-.75,-0.25,0.25,0.75,1)
 
@@ -232,6 +237,10 @@ huc_codes<-read.csv("/Users/jonathanwalter/GitHub/AquaTerrSynch/AnalysisCode/mat
 #state info
 states<-lagosne_select(table="state", vars=c("state_zoneid","state_name"))
 
+#shoreline development ratio
+sdev<-analysislakes$lakeinfo$lake_perim_meters/(2*sqrt(pi*analysislakes$lakeinfo$lake_area_ha*10000))
+shoredev<-data.frame(lagoslakeid=analysislakes$lakeinfo$lagoslakeid,shoredev=sdev)
+
 predictors<-analysislakes$lakeinfo
 predictors<-left_join(predictors, depth, by="lagoslakeid")
 predictors<-left_join(predictors, pct.ag.avg, by="hu12_zoneid")
@@ -242,6 +251,7 @@ predictors<-left_join(predictors, states, by="state_zoneid")
 predictors<-left_join(predictors, cv.accndvi, by="lagoslakeid")
 predictors<-left_join(predictors, avg.doc, by="lagoslakeid")
 predictors<-left_join(predictors, lake.prcp, by="lagoslakeid")
+predictors<-left_join(predictors, shoredev, by="lagoslakeid")
 #predictors<-left_join(predictors, huc_codes, by="hu4_zoneid")
 
 for(nn in 1:ncol(predictors)){
@@ -273,6 +283,7 @@ hist(predictors$cv.accndvi)
 hist(predictors$pct.wetlands)
 hist(predictors$doc)
 hist(predictors$prcp.normal)
+hist(predictors$shoredev)
 
 # predictors$log10_lake_area_ha<-log10(predictors$lake_area_ha) #not necessary to transform with random forests
 # predictors$log10_lake_perim_meters<-log10(predictors$lake_perim_meters)
@@ -300,12 +311,12 @@ modvars.accndvi.philt<-modvars.accndvi[modvars.accndvi$accndvip.ts2<0.3,]
 
 # cforest.st<-partykit::cforest(accndvicoh.ts1 ~ lake_area_ha + lake_perim_meters + maxdepth + pct.ag + chla + tsi.cat + hu4_zoneid + cv.accndvi, 
 #                     data=modvars.accndvi, ntree=20000)
-cforest.st<-party::cforest(accndvicoh.ts1 ~ lake_area_ha + lake_perim_meters + maxdepth + pct.ag + chla + tsi.cat + hu4_zoneid + 
-                             cv.accndvi + pct.wetlands + doc + prcp.normal,
+cforest.st<-party::cforest(accndvicoh.ts1 ~ shoredev + lake_area_ha +  maxdepth + pct.ag + chla + tsi.cat + 
+                             hu4_zoneid + cv.accndvi + pct.wetlands + doc + prcp.normal,
                     data=modvars.accndvi, controls=cforest_control(ntree=80000))
 predcoh.st<-predict(cforest.st, newdata=modvars.accndvi,type="response")
-hist(predcoh.st)
-hist(modvars.accndvi$accndvicoh.ts1)
+#hist(predcoh.st)
+#hist(modvars.accndvi$accndvicoh.ts1)
 plot(predcoh.st, modvars.accndvi$accndvicoh.ts1, xlab="predicted", ylab="empirical", main="Coherence, short ts",
      xlim=c(0,1), ylim=c(0,1))
 abline(a=0,b=1)
@@ -313,21 +324,20 @@ cor.test(predcoh.st,modvars.accndvi$accndvicoh.ts1)
 varimp.coh.st<-varimp(cforest.st)
 print(varimp.coh.st[order(varimp.coh.st, decreasing=T)])
 
-
+partial(cforest.st, pred.var="shoredev", train=modvars.accndvi, type="regression", plot=T)
 partial(cforest.st, pred.var="prcp.normal", train=modvars.accndvi, type="regression", plot=T)
-partial(cforest.st, pred.var="lake_perim_meters", train=modvars.accndvi, type="regression", plot=T)
 partial(cforest.st, pred.var="pct.ag", train=modvars.accndvi, type="regression", plot=T)
-partial(cforest.st, pred.var="lake_area_ha", train=modvars.accndvi, type="regression", plot=T)
 partial(cforest.st, pred.var="maxdepth", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.st, pred.var="lake_area_ha", train=modvars.accndvi, type="regression", plot=T)
 partial(cforest.st, pred.var="chla", train=modvars.accndvi, type="regression", plot=T)
 partial(cforest.st, pred.var="doc", train=modvars.accndvi, type="regression", plot=T)
-partial(cforest.st, pred.var="pct.wetlands", train=modvars.accndvi, type="regression", plot=T)
 partial(cforest.st, pred.var="cv.accndvi", train=modvars.accndvi, type="regression", plot=T)
-partial(cforest.st, pred.var="tsi.cat", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.st, pred.var="pct.wetlands", train=modvars.accndvi, type="regression", plot=T)
 partial(cforest.st, pred.var="hu4_zoneid", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.st, pred.var="tsi.cat", train=modvars.accndvi, type="regression", plot=T)
 
-cforest.lt<-party::cforest(accndvicoh.ts2 ~ lake_area_ha + lake_perim_meters + maxdepth + pct.ag + chla + tsi.cat + hu4_zoneid + 
-                             cv.accndvi+ pct.wetlands + doc + prcp.normal, 
+cforest.lt<-party::cforest(accndvicoh.ts2 ~ shoredev + lake_area_ha + maxdepth + pct.ag + chla + tsi.cat + hu4_zoneid 
+                           + cv.accndvi+ pct.wetlands + doc + prcp.normal, 
                     data=modvars.accndvi, controls=cforest_control(ntree=80000))
 predcoh.lt<-predict(cforest.lt, newdata=modvars.accndvi)
 # hist(predcoh.lt)
@@ -343,12 +353,12 @@ print(varimp.coh.lt[order(varimp.coh.lt, decreasing=T)])
 partial(cforest.lt, pred.var="pct.wetlands", train=modvars.accndvi, type="regression", plot=T)
 partial(cforest.lt, pred.var="cv.accndvi", train=modvars.accndvi, type="regression", plot=T)
 partial(cforest.lt, pred.var="hu4_zoneid", train=modvars.accndvi, type="regression", plot=T)
-partial(cforest.lt, pred.var="doc", train=modvars.accndvi, type="regression", plot=T)
-partial(cforest.lt, pred.var="lake_area_ha", train=modvars.accndvi, type="regression", plot=T)
-partial(cforest.lt, pred.var="lake_perim_meters", train=modvars.accndvi, type="regression", plot=T)
-partial(cforest.lt, pred.var="prcp.normal", train=modvars.accndvi, type="regression", plot=T)
-partial(cforest.lt, pred.var="chla", train=modvars.accndvi, type="regression", plot=T)
 partial(cforest.lt, pred.var="tsi.cat", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.lt, pred.var="doc", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.lt, pred.var="prcp.normal", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.lt, pred.var="lake_area_ha", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.lt, pred.var="chla", train=modvars.accndvi, type="regression", plot=T)
+partial(cforest.lt, pred.var="shoredev", train=modvars.accndvi, type="regression", plot=T)
 partial(cforest.lt, pred.var="pct.ag", train=modvars.accndvi, type="regression", plot=T)
 partial(cforest.lt, pred.var="maxdepth", train=modvars.accndvi, type="regression", plot=T)
 
@@ -356,8 +366,8 @@ partial(cforest.lt, pred.var="maxdepth", train=modvars.accndvi, type="regression
 
 ```{r modellingPhase, echo=TRUE, cache=FALSE}
 
-cforest.phi.st<-cforest(cos(accndviphi.ts1) ~ lake_area_ha + lake_perim_meters + maxdepth + pct.ag + chla + tsi.cat + hu4_zoneid + 
-                          cv.accndvi+ pct.wetlands + doc + prcp.normal, 
+cforest.phi.st<-cforest(cos(accndviphi.ts1) ~ shoredev + lake_area_ha + maxdepth + pct.ag + chla + tsi.cat + 
+                          hu4_zoneid + cv.accndvi+ pct.wetlands + doc + prcp.normal, 
                         data=modvars.accndvi.phist,controls=cforest_control(ntree=40000))
 predphi.st<-predict(cforest.phi.st, newdata=modvars.accndvi.phist)
 # hist(predphi.st)
@@ -371,9 +381,9 @@ print(varimp.phi.st[order(varimp.phi.st,decreasing=TRUE)])
 
 partial(cforest.phi.st, pred.var="maxdepth", train=modvars.accndvi.phist, type="regression", plot=T)
 partial(cforest.phi.st, pred.var="lake_area_ha", train=modvars.accndvi.phist, type="regression", plot=T)
-partial(cforest.phi.st, pred.var="lake_perim_meters", train=modvars.accndvi.phist, type="regression", plot=T)
 partial(cforest.phi.st, pred.var="doc", train=modvars.accndvi.phist, type="regression", plot=T)
 partial(cforest.phi.st, pred.var="cv.accndvi", train=modvars.accndvi.phist, type="regression", plot=T)
+partial(cforest.phi.st, pred.var="shoredev", train=modvars.accndvi.phist, type="regression", plot=T)
 partial(cforest.phi.st, pred.var="pct.wetlands", train=modvars.accndvi.phist, type="regression", plot=T)
 partial(cforest.phi.st, pred.var="prcp.normal", train=modvars.accndvi.phist, type="regression", plot=T)
 partial(cforest.phi.st, pred.var="chla", train=modvars.accndvi.phist, type="regression", plot=T)
@@ -382,7 +392,7 @@ partial(cforest.phi.st, pred.var="tsi.cat", train=modvars.accndvi.phist, type="r
 partial(cforest.phi.st, pred.var="hu4_zoneid", train=modvars.accndvi.phist, type="regression", plot=T)
 
 
-cforest.phi.lt<-cforest(cos(accndviphi.ts2) ~ lake_area_ha + lake_perim_meters + maxdepth + pct.ag + chla + tsi.cat + hu4_zoneid + 
+cforest.phi.lt<-cforest(cos(accndviphi.ts2) ~ shoredev + lake_area_ha + maxdepth + pct.ag + chla + tsi.cat + hu4_zoneid + 
                           cv.accndvi + pct.wetlands + doc + prcp.normal, 
                         data=modvars.accndvi.philt,controls=cforest_control(ntree=40000))
 predphi.lt<-predict(cforest.phi.lt, newdata=modvars.accndvi.philt)
@@ -399,8 +409,8 @@ partial(cforest.phi.lt, pred.var="hu4_zoneid", train=modvars.accndvi.philt, type
 partial(cforest.phi.lt, pred.var="lake_area_ha", train=modvars.accndvi.philt, type="regression", plot=T)
 partial(cforest.phi.lt, pred.var="prcp.normal", train=modvars.accndvi.philt, type="regression", plot=T)
 partial(cforest.phi.lt, pred.var="pct.wetlands", train=modvars.accndvi.philt, type="regression", plot=T)
-partial(cforest.phi.lt, pred.var="lake_perim_meters", train=modvars.accndvi.philt, type="regression", plot=T)
 partial(cforest.phi.lt, pred.var="doc", train=modvars.accndvi.philt, type="regression", plot=T)
+partial(cforest.phi.lt, pred.var="shoredev", train=modvars.accndvi.philt, type="regression", plot=T)
 partial(cforest.phi.lt, pred.var="chla", train=modvars.accndvi.philt, type="regression", plot=T)
 partial(cforest.phi.lt, pred.var="cv.accndvi", train=modvars.accndvi.philt, type="regression", plot=T)
 partial(cforest.phi.lt, pred.var="maxdepth", train=modvars.accndvi.philt, type="regression", plot=T)
