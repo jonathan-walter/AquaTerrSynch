@@ -1,0 +1,276 @@
+---
+title: "ms1_analyses_rf_testnewvars"
+author: "Jonathan Walter, Grace Wilkinson, Rachel Fleck, Michael Pace"
+date: "10/3/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(aqts)
+library(wsyn)
+library(rgdal)
+library(LAGOSNE)
+library(raster)
+library(MuMIn)
+library(dplyr)
+library(nlme)
+library(lmerTest)
+library(viridis)
+library(fields)
+#library(partykit)
+library(pdp)
+library(party)
+library(spatstat)
+library(caret)
+
+rm(list=ls())
+
+```
+
+This document organizes for openness and reproducibility analyses of the temporal coherence of interannual variation in lake primary productivity with terrestrial primary productivity in the landscape surrounding the lake.
+
+# Data import
+
+Data produced in 'ms1_prep.Rmd' are loaded.
+
+```{r load workspace, echo=TRUE, cache=FALSE}
+
+load("/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/RData files/ms1_analysis_inprogress1_v10873.RData")
+
+```
+
+```{r examine missing values, echo=TRUE, cache=FALSE}
+any(sapply(analysislakes$lakedata, function(x){any(is.infinite(x))}))
+any(sapply(analysislakes$lakedata, function(x){any(is.na(x))}))
+which(sapply(analysislakes$lakedata, function(x){any(is.na(x))}))
+analysislakes$lakeinfo[which(sapply(analysislakes$lakedata, function(x){any(is.na(x))})),]
+
+# image(accndvi)
+# points(lakepts.prj[which(sapply(analysislakes$lakedata, function(x){any(is.na(x))})),])
+
+dbuff[which(sapply(analysislakes$lakedata, function(x){any(is.na(x))}))]
+
+analysislakes$lakeinfo<-analysislakes$lakeinfo[!sapply(analysislakes$lakedata, function(x){any(is.na(x))}),]
+analysislakes$lakedata<-analysislakes$lakedata[!sapply(analysislakes$lakedata, function(x){any(is.na(x))})]
+
+analysislakes$lakeinfo$tslength<-analysislakes$lakeinfo$end-analysislakes$lakeinfo$start+1
+# analysislakes$lakedata<-analysislakes$lakedata[!analysislakes$lakeinfo$tslength < 20]
+# analysislakes$lakeinfo<-analysislakes$lakeinfo[!analysislakes$lakeinfo$tslength < 20,]
+
+```
+
+```{r compute coherences, echo=TRUE, cache=FALSE}
+
+source("~/GitHub/AquaTerrSynch/AnalysisCode/bandtest_coh.R")
+
+tsranges<-rbind(c(2,4),c(4,Inf),c(2,Inf))
+
+coh.chlaXaccndvi<-NULL
+#coh.chlaXmaxndvi<-NULL
+
+for(lind in 1:length(analysislakes$lakedata)){
+  lakedat.ii<-cleandat(analysislakes$lakedata[[lind]], as.numeric(colnames(analysislakes$lakedata[[lind]])), clev=5)$cdat
+  chlaXaccndvi<-coh(lakedat.ii[1,], lakedat.ii[2,], as.numeric(colnames(analysislakes$lakedata[[lind]])),
+                    norm="powall", sigmethod="fast", nrand=10000)
+#  chlaXmaxndvi<-coh(lakedat.ii[1,], lakedat.ii[3,], as.numeric(colnames(analysislakes$lakedata[[lind]])),
+#                    norm="powall", sigmethod="fast", nrand=10000)
+  for(rind in 1:nrow(tsranges)){
+    chlaXaccndvi<-bandtest.coh(chlaXaccndvi, tsranges[rind,])
+    #chlaXmaxndvi<-bandtest.coh(chlaXmaxndvi, tsranges[rind,])
+  }
+  coh.chlaXaccndvi<-rbind(coh.chlaXaccndvi, c(t(as.matrix(chlaXaccndvi$bandp[,3:5]))))
+#  coh.chlaXmaxndvi<-rbind(coh.chlaXmaxndvi, c(t(as.matrix(chlaXmaxndvi$bandp[,3:5]))))
+  
+}
+
+coh.chlaXaccndvi<-as.data.frame(coh.chlaXaccndvi)
+#coh.chlaXmaxndvi<-as.data.frame(coh.chlaXmaxndvi)
+
+colnames(coh.chlaXaccndvi)<-paste0("accndvi",c("p.ts1","phi.ts1","coh.ts1","p.ts2","phi.ts2","coh.ts2","p.ts3","phi.ts3","coh.ts3"))
+#colnames(coh.chlaXmaxndvi)<-paste0("maxndvi",c("p.ts1","phi.ts1","coh.ts1","p.ts2","phi.ts2","coh.ts2","p.ts3","phi.ts3","coh.ts3"))
+
+coh.chlaXaccndvi$lagoslakeid<-analysislakes$lakeinfo$lagoslakeid
+#coh.chlaXmaxndvi$lagoslakeid<-analysislakes$lakeinfo$lagoslakeid
+
+```
+
+
+```{r summarize coherences, echo=TRUE, cache=FALSE}
+#short timescales
+hist(coh.chlaXaccndvi$accndvicoh.ts1, main="Accumulated NDVI, short timescales", xlab="Coherence", ylab="Frequency")
+#hist(coh.chlaXmaxndvi$maxndvicoh.ts1, main="Maximum NDVI, short timescales", xlab="Coherence", ylab="Frequency")
+
+quantile(coh.chlaXaccndvi$accndvicoh.ts1)
+#quantile(coh.chlaXmaxndvi$maxndvicoh.ts1)
+
+alpha=0.05
+sum(coh.chlaXaccndvi$accndvip.ts1<alpha)/nrow(coh.chlaXaccndvi)
+#sum(coh.chlaXmaxndvi$maxndvip.ts1<alpha)/nrow(coh.chlaXmaxndvi)
+
+print(cbind(coh.chlaXaccndvi$lagoslakeid, coh.chlaXaccndvi$accndvip.ts1)[coh.chlaXaccndvi$accndvip.ts1<alpha,])
+print(cbind(coh.chlaXaccndvi$lagoslakeid, coh.chlaXaccndvi$accndvip.ts2)[coh.chlaXaccndvi$accndvip.ts2<alpha,])
+
+cor(coh.chlaXaccndvi$accndvicoh.ts1,coh.chlaXaccndvi$accndvicoh.ts2)
+
+# print(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts1<alpha]/pi) #only pattern is that lakes don't lead the landscape
+# print(coh.chlaXmaxndvi$maxndviphi.ts1[coh.chlaXmaxndvi$maxndvip.ts1<alpha]/pi)
+
+phicls<-c(-1,-.75,-0.25,0.25,0.75,1)
+
+# hist(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts1<0.2]/pi, main="Accumulated NDVI, short timescales", xlab="Phase (pi)", ylab="Frequency", breaks=phicls)
+rose(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts1<0.3], unit="radian",
+     breaks=seq(0,2*pi,length.out=16))
+#hist(coh.chlaXmaxndvi$maxndviphi.ts1[coh.chlaXmaxndvi$maxndvip.ts1<0.2]/pi, main="Maximum NDVI, short timescales", xlab="Phase (pi)", ylab="Frequency", breaks=5)
+
+#long timescales
+hist(coh.chlaXaccndvi$accndvicoh.ts2, main="Accumulated NDVI, long timescales", xlab="Coherence", ylab="Frequency")
+#hist(coh.chlaXmaxndvi$maxndvicoh.ts2, main="Maximum NDVI, long timescales", xlab="Coherence", ylab="Frequency")
+
+quantile(coh.chlaXaccndvi$accndvicoh.ts2)
+#quantile(coh.chlaXmaxndvi$maxndvicoh.ts2)
+
+alpha=0.05
+sum(coh.chlaXaccndvi$accndvip.ts2<alpha)/nrow(coh.chlaXaccndvi)
+#sum(coh.chlaXmaxndvi$maxndvip.ts2<alpha)/nrow(coh.chlaXmaxndvi)
+
+print(coh.chlaXaccndvi$accndviphi.ts2[coh.chlaXaccndvi$accndvip.ts2<alpha]/pi)
+#print(coh.chlaXmaxndvi$maxndviphi.ts2[coh.chlaXmaxndvi$maxndvip.ts2<alpha]/pi)
+
+# hist(coh.chlaXaccndvi$accndviphi.ts2[coh.chlaXaccndvi$accndvip.ts2<0.2]/pi, main="Accumulated NDVI, long timescales", xlab="Phase (pi)", ylab="Frequency", breaks=phicls)
+rose(coh.chlaXaccndvi$accndviphi.ts2[coh.chlaXaccndvi$accndvip.ts2<0.3], unit="radian",
+     breaks=seq(0,2*pi,length.out=16))
+
+#hist(coh.chlaXmaxndvi$maxndviphi.ts1[coh.chlaXmaxndvi$maxndvicoh.ts2>0.6]/pi, main="Maximum NDVI, short timescales", xlab="Phase (pi)", ylab="Frequency", breaks=5)
+
+# tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig2_distributions.tif", units="in",
+#      res=300, width=6.5, height=6.5)
+# 
+# par(mar=c(3,3,2,1),mgp=c(1.7,0.5,0),mfrow=c(2,2),cex.main=0.9)
+# 
+# hist(coh.chlaXaccndvi$accndvicoh.ts1, main="Short timescale coherence", xlab="Coherence", ylab="Frequency", col="lightgrey",xlim=c(0,1))
+# text(par()$usr[1]+.05,0.95*par()$usr[4],"a)")
+# hist(coh.chlaXaccndvi$accndvicoh.ts2, main="Long timescale coherence", xlab="Coherence", ylab="Frequency", col="lightgrey",xlim=c(0,1))
+# text(par()$usr[1]+.05,0.95*par()$usr[4],"b)")
+# 
+# par(mar=c(1,1,2,1))
+# rose(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts1<0.3], unit="radian", col="lightgrey",
+#      breaks=c(0,pi/4,pi/2,3*pi/4,pi,5*pi/4,3*pi/2,7*pi/4,2*pi), main="Short timescale phases",
+#        at=c(0,pi/4,pi/2,3*pi/4,pi,-3*pi/4,-pi/2,-pi/4))
+# text(0.9*par()$usr[1],0.95*par()$usr[4],"c)")
+# rose(coh.chlaXaccndvi$accndviphi.ts2[coh.chlaXaccndvi$accndvip.ts2<0.3], unit="radian", col="lightgrey",
+#      breaks=c(0,pi/4,pi/2,3*pi/4,pi,5*pi/4,3*pi/2,7*pi/4,2*pi), main="Long timescale phases",
+#      at=c(0,pi/4,pi/2,3*pi/4,pi,-3*pi/4,-pi/2,-pi/4))
+# text(0.9*par()$usr[1],0.95*par()$usr[4],"d)")
+# 
+# dev.off()
+
+```
+
+
+
+```{r add vars for modelling, echo=TRUE, cache=FALSE}
+
+dt<-lagosne_load("1.087.3")
+dt.conn<-dt$buffer500m.conn
+dt.chag<-dt$hu12.chag
+
+predictors<-analysislakes$lakeinfo
+predictors$tslength<-predictors$end-predictors$start + 1
+pred.conn<-left_join(predictors, dt.conn, by="lagoslakeid")
+pred.chag<-left_join(predictors, dt.chag, by="hu12_zoneid")
+
+modvars.conn<-left_join(pred.conn, coh.chlaXaccndvi, by="lagoslakeid")
+modvars.chag<-left_join(pred.chag, coh.chlaXaccndvi, by="lagoslakeid")
+
+# modvars.accndvi.phist<-modvars.accndvi[modvars.accndvi$accndvip.ts1<0.3,]
+# modvars.accndvi.philt<-modvars.accndvi[modvars.accndvi$accndvip.ts2<0.3,]
+
+```
+
+```{r modellingCoherence, echo=TRUE, cache=FALSE}
+
+dconn.st<-modvars.conn[,c(17:26,29)]
+
+cforest.st<-party::cforest(accndvicoh.ts1 ~ ., data=dconn.st,
+                           controls=cforest_control(ntree=50000,mincriterion =  0.9))
+predcoh.st<-predict(cforest.st, newdata=dconn.st,type="response")
+#hist(predcoh.st)
+#hist(modvars.accndvi$accndvicoh.ts1)
+plot(predcoh.st, dconn.st$accndvicoh.ts1, xlab="predicted", ylab="empirical", main="Coherence, short ts",
+     xlim=c(0,1), ylim=c(0,1))
+abline(a=0,b=1)
+cor.test(predcoh.st,dconn.st$accndvicoh.ts1)
+varimp.coh.st<-varimp(cforest.st)
+print(varimp.coh.st[order(varimp.coh.st, decreasing=T)])
+
+
+#pdp.shoredev.coh.st<-partial(cforest.st, pred.var="shoredev", train=modvars.accndvi, type="regression", plot=T)
+
+
+dchag.st<-modvars.chag[,c(17:158,161)]
+cforest.st<-party::cforest(accndvicoh.ts1 ~ ., data=dchag.st, 
+                           controls=cforest_control(ntree=50000,mincriterion =  0.9))
+predcoh.st<-predict(cforest.st, newdata=dchag.st,type="response")
+#hist(predcoh.st)
+#hist(modvars.accndvi$accndvicoh.ts1)
+plot(predcoh.st, dconn.st$accndvicoh.ts1, xlab="predicted", ylab="empirical", main="Coherence, short ts",
+     xlim=c(0,1), ylim=c(0,1))
+abline(a=0,b=1)
+cor.test(predcoh.st,dconn.st$accndvicoh.ts1)
+varimp.coh.st<-varimp(cforest.st)
+print(varimp.coh.st[order(varimp.coh.st, decreasing=T)])
+
+
+
+### long timescales
+dconn.lt<-modvars.conn[,c(17:26,32)]
+
+cforest.lt<-party::cforest(accndvicoh.ts2 ~ ., data=dconn.lt,
+                           controls=cforest_control(ntree=50000,mincriterion =  0.9))
+predcoh.lt<-predict(cforest.lt, newdata=dconn.lt,type="response")
+#hist(predcoh.lt)
+#hist(modvars.accndvi$accndvicoh.ts1)
+plot(predcoh.lt, dconn.lt$accndvicoh.ts2, xlab="predicted", ylab="empirical", main="Coherence, short ts",
+     xlim=c(0,1), ylim=c(0,1))
+abline(a=0,b=1)
+cor.test(predcoh.lt,dconn.lt$accndvicoh.ts2)
+varimp.coh.lt<-varimp(cforest.lt)
+print(varimp.coh.lt[order(varimp.coh.lt, decreasing=T)])
+
+
+#pdp.shoredev.coh.lt<-partial(cforest.lt, pred.var="shoredev", train=modvars.accndvi, type="regression", plot=T)
+
+
+dchag.lt<-modvars.chag[,c(17:158,164)]
+cforest.lt<-party::cforest(accndvicoh.ts2 ~ ., data=dchag.lt, 
+                           controls=cforest_control(ntree=50000,mincriterion =  0.9))
+predcoh.lt<-predict(cforest.lt, newdata=dchag.lt,type="response")
+#hist(predcoh.lt)
+#hist(modvars.accndvi$accndvicoh.ts1)
+plot(predcoh.lt, dconn.lt$accndvicoh.ts2, xlab="predicted", ylab="empirical", main="Coherence, short ts",
+     xlim=c(0,1), ylim=c(0,1))
+abline(a=0,b=1)
+cor.test(predcoh.lt,dconn.lt$accndvicoh.ts2)
+varimp.coh.lt<-varimp(cforest.lt)
+print(varimp.coh.lt[order(varimp.coh.lt, decreasing=T)])
+
+# cforest.lt<-party::cforest(accndvicoh.ts2 ~ shoredev + lake_area_ha + maxdepth + pct.ag + chla + tsi.cat + hu4_zoneid 
+#                            + cv.accndvi+ pct.wetlands + doc + prcp.normal,
+#                     data=modvars.accndvi, controls=cforest_control(ntree=50000,mincriterion = 0.9))
+# predcoh.lt<-predict(cforest.lt, newdata=modvars.accndvi)
+# # hist(predcoh.lt)
+# # hist(modvars.accndvi$accndvicoh.ts2)
+# plot(predcoh.lt, modvars.accndvi$accndvicoh.ts2, xlab="predicted", ylab="empirical", main="Coherence, long st",
+#      xlim=c(0,1), ylim=c(0,1))
+# abline(a=0,b=1)
+# cor.test(predcoh.lt,modvars.accndvi$accndvicoh.ts2)
+# varimp.coh.lt<-varimp(cforest.lt)
+# print(varimp.coh.lt[order(varimp.coh.lt, decreasing=T)])
+# 
+# 
+# #pdp.wetlands.coh.lt<-partial(cforest.lt, pred.var="pct.wetlands", train=modvars.accndvi, type="regression", plot=T)
+# 
+
+```

@@ -33,7 +33,7 @@ lakes_to_get<-read.csv("~/GitHub/AquaTerrSynch/AnalysisCode/lakes20yrs_chla.csv"
 
 lagoslakes.raw<-makeLAGOSannualts(lakes_to_get, infovars=c("lake_area_ha", "lake_perim_meters", "nhd_ftype", "nhd_fcode", "hu4_zoneid", 
                                                            "hu12_zoneid", "state_zoneid", "elevation_m"), tsvars=c("chla"), 
-                                  minmos=3, minobs=3, timespan=c(1989,2018))
+                                  minmos=3, minobs=3, timespan=c(1989,2018),lagosversion="1.087.3")
 lagoslakes.cln<-cleanAnnualts(lagoslakes.raw)
 
 rm(lakes_to_get)
@@ -77,6 +77,6 @@ maxndvi<-mask(maxndvi,watermask,maskvalue=0)
 analysislakes<-addAVHRRannualts(analysislakes, accndvi, dbuff)
 analysislakes<-addAVHRRannualts(analysislakes, maxndvi, dbuff)
 
-save.image("/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/RData files/ms1_analysis_inprogress1.RData")
+save.image("/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/RData files/ms1_analysis_inprogress1_v10873.RData")
 
 ```

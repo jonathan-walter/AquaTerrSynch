@@ -20,10 +20,11 @@ library(lmerTest)
 library(viridis)
 library(fields)
 #library(partykit)
-library(pdp)
-library(party)
+# library(pdp)
+# library(party)
+library(mgcv)
+library(MuMIn)
 library(spatstat)
-library(caret)
 
 rm(list=ls())
 
@@ -120,49 +121,49 @@ sig4<-sig3*0.9
 sig5<-sin(seq(-pi/2,2*pi*20/p2-(pi/2),length.out=length(tt[tt<=20])))
 sig6<-sig3*-1
 
-tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig1_pedagogical.tif", units="in",
-     res=300, width=6.5, height=4)
-
-layout(laymat)
-par(mar=c(1.5,1.5,2,1.5), mgp=c(1,1,0), oma=c(2,2,0,0))
-
-plot(NA,NA,ylim=c(-2,5.2),xlim=range(tt), xlab="", ylab="", xaxt="n",yaxt="n")
-lines(tt,comb1,lwd=2)
-lines(tt,comb2,lwd=2,col="red")
-axis(1, at=c(0,10,20,30,40,50),labels=NA)
-axis(2, at=c(-1,1.5,4), labels=NA)
-mtext("Timescale specific relationship",3,line=0.25)
-text(0.4,4.9,"a)",cex=1.2)
-
-plot(NA,NA,ylim=c(-1,1),xlim=c(0,20),xaxt="n",yaxt="n",xlab="",ylab="")
-axis(1, at=c(0,10,20), labels=NA)
-axis(2, at=c(-1,0,1), labels=NA)
-lines(tt[tt<=20],sig3,lwd=2)
-lines(tt[tt<=20],sig4,lwd=2,col="red")
-mtext(expression(paste(phi," = 0")))
-text(1,0.9,"b)",cex=1.2)
-
-plot(NA,NA,ylim=c(-1,1),xlim=c(0,20),xaxt="n",yaxt="n",xlab="",ylab="")
-axis(1, at=c(0,10,20), labels=NA)
-axis(2, at=c(-1,0,1), labels=NA)
-lines(tt[tt<=20],sig3,lwd=2)
-lines(tt[tt<=20],sig5,lwd=2,col="red")
-mtext(expression(paste(phi," = ",pi,"/2")))
-text(1,0.9,"c)",cex=1.2)
-
-plot(NA,NA,ylim=c(-1,1),xlim=c(0,20),xaxt="n",yaxt="n",xlab="",ylab="")
-axis(1, at=c(0,10,20), labels=NA)
-axis(2, at=c(-1,0,1), labels=NA)
-lines(tt[tt<=20],sig3,lwd=2)
-lines(tt[tt<=20],sig6,lwd=2,col="red")
-mtext(expression(paste(phi," = ",pi)))
-text(1,0.9,"d)",cex=1.2)
-
-
-mtext("Time", 1, outer=T)
-mtext("Signal", 2, outer=T)
-
-dev.off()
+# tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig1_pedagogical.tif", units="in",
+#      res=300, width=6.5, height=4)
+# 
+# layout(laymat)
+# par(mar=c(1.5,1.5,2,1.5), mgp=c(1,1,0), oma=c(2,2,0,0))
+# 
+# plot(NA,NA,ylim=c(-2,5.2),xlim=range(tt), xlab="", ylab="", xaxt="n",yaxt="n")
+# lines(tt,comb1,lwd=2)
+# lines(tt,comb2,lwd=2,col="red")
+# axis(1, at=c(0,10,20,30,40,50),labels=NA)
+# axis(2, at=c(-1,1.5,4), labels=NA)
+# mtext("Timescale specific relationship",3,line=0.25)
+# text(0.4,4.9,"a)",cex=1.2)
+# 
+# plot(NA,NA,ylim=c(-1,1),xlim=c(0,20),xaxt="n",yaxt="n",xlab="",ylab="")
+# axis(1, at=c(0,10,20), labels=NA)
+# axis(2, at=c(-1,0,1), labels=NA)
+# lines(tt[tt<=20],sig3,lwd=2)
+# lines(tt[tt<=20],sig4,lwd=2,col="red")
+# mtext(expression(paste(phi," = 0")))
+# text(1,0.9,"b)",cex=1.2)
+# 
+# plot(NA,NA,ylim=c(-1,1),xlim=c(0,20),xaxt="n",yaxt="n",xlab="",ylab="")
+# axis(1, at=c(0,10,20), labels=NA)
+# axis(2, at=c(-1,0,1), labels=NA)
+# lines(tt[tt<=20],sig3,lwd=2)
+# lines(tt[tt<=20],sig5,lwd=2,col="red")
+# mtext(expression(paste(phi," = ",pi,"/2")))
+# text(1,0.9,"c)",cex=1.2)
+# 
+# plot(NA,NA,ylim=c(-1,1),xlim=c(0,20),xaxt="n",yaxt="n",xlab="",ylab="")
+# axis(1, at=c(0,10,20), labels=NA)
+# axis(2, at=c(-1,0,1), labels=NA)
+# lines(tt[tt<=20],sig3,lwd=2)
+# lines(tt[tt<=20],sig6,lwd=2,col="red")
+# mtext(expression(paste(phi," = ",pi)))
+# text(1,0.9,"d)",cex=1.2)
+# 
+# 
+# mtext("Time", 1, outer=T)
+# mtext("Signal", 2, outer=T)
+# 
+# dev.off()
 
 ```
 
@@ -212,28 +213,28 @@ rose(coh.chlaXaccndvi$accndviphi.ts2[coh.chlaXaccndvi$accndvip.ts2<0.3], unit="r
      breaks=seq(0,2*pi,length.out=16))
 
 #hist(coh.chlaXmaxndvi$maxndviphi.ts1[coh.chlaXmaxndvi$maxndvicoh.ts2>0.6]/pi, main="Maximum NDVI, short timescales", xlab="Phase (pi)", ylab="Frequency", breaks=5)
-
-tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig2_distributions.tif", units="in",
-     res=300, width=6.5, height=6.5)
-
-par(mar=c(3,3,2,1),mgp=c(1.7,0.5,0),mfrow=c(2,2),cex.main=0.9)
-
-hist(coh.chlaXaccndvi$accndvicoh.ts1, main="Short timescale coherence", xlab="Coherence", ylab="Frequency", col="lightgrey",xlim=c(0,1))
-text(par()$usr[1]+.05,0.95*par()$usr[4],"a)")
-hist(coh.chlaXaccndvi$accndvicoh.ts2, main="Long timescale coherence", xlab="Coherence", ylab="Frequency", col="lightgrey",xlim=c(0,1))
-text(par()$usr[1]+.05,0.95*par()$usr[4],"b)")
-
-par(mar=c(1,1,2,1))
-rose(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts1<0.3], unit="radian", col="lightgrey",
-     breaks=c(0,pi/4,pi/2,3*pi/4,pi,5*pi/4,3*pi/2,7*pi/4,2*pi), main="Short timescale phases",
-       at=c(0,pi/4,pi/2,3*pi/4,pi,-3*pi/4,-pi/2,-pi/4))
-text(0.9*par()$usr[1],0.95*par()$usr[4],"c)")
-rose(coh.chlaXaccndvi$accndviphi.ts2[coh.chlaXaccndvi$accndvip.ts2<0.3], unit="radian", col="lightgrey",
-     breaks=c(0,pi/4,pi/2,3*pi/4,pi,5*pi/4,3*pi/2,7*pi/4,2*pi), main="Long timescale phases",
-     at=c(0,pi/4,pi/2,3*pi/4,pi,-3*pi/4,-pi/2,-pi/4))
-text(0.9*par()$usr[1],0.95*par()$usr[4],"d)")
-
-dev.off()
+# 
+# tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig2_distributions.tif", units="in",
+#      res=300, width=6.5, height=6.5)
+# 
+# par(mar=c(3,3,2,1),mgp=c(1.7,0.5,0),mfrow=c(2,2),cex.main=0.9)
+# 
+# hist(coh.chlaXaccndvi$accndvicoh.ts1, main="Short timescale coherence", xlab="Coherence", ylab="Frequency", col="lightgrey")
+# text(par()$usr[1]+.05,0.95*par()$usr[4],"a)")
+# hist(coh.chlaXaccndvi$accndvicoh.ts2, main="Long timescale coherence", xlab="Coherence", ylab="Frequency", col="lightgrey")
+# text(par()$usr[1]+.05,0.95*par()$usr[4],"b)")
+# 
+# par(mar=c(1,1,2,1))
+# rose(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts1<0.3], unit="radian", col="lightgrey",
+#      breaks=c(0,pi/4,pi/2,3*pi/4,pi,5*pi/4,3*pi/2,7*pi/4,2*pi), main="Short timescale phases",
+#        at=c(0,pi/4,pi/2,3*pi/4,pi,-3*pi/4,-pi/2,-pi/4))
+# text(0.9*par()$usr[1],0.95*par()$usr[4],"c)")
+# rose(coh.chlaXaccndvi$accndviphi.ts2[coh.chlaXaccndvi$accndvip.ts2<0.3], unit="radian", col="lightgrey",
+#      breaks=c(0,pi/4,pi/2,3*pi/4,pi,5*pi/4,3*pi/2,7*pi/4,2*pi), main="Long timescale phases",
+#      at=c(0,pi/4,pi/2,3*pi/4,pi,-3*pi/4,-pi/2,-pi/4))
+# text(0.9*par()$usr[1],0.95*par()$usr[4],"d)")
+# 
+# dev.off()
 
 ```
 
@@ -267,25 +268,25 @@ laymat=matrix(1,nrow=2,ncol=13)
 laymat[2,]<-2
 laymat[,13]<-3
 
-tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig3_coherencemap.tif", units="in",
-     res=300, width=6.5, height=7.5)
-
-layout(laymat)
-par(mar=c(0,0,1.5,0))
-
-plot(lagosstates, main="Short timescale coherence")
-points(cohplotdata$nhd_long, cohplotdata$nhd_lat, pch=16, cex=1.5, col=pal[round(cohplotdata$accndvicoh.ts1,2)*100])
-text(0.99*par()$usr[1],0.99*par()$usr[4],"a)",cex=1.5)
-
-plot(lagosstates, main="Long timescale coherence")
-points(cohplotdata$nhd_long, cohplotdata$nhd_lat, pch=16, cex=1.5, col=pal[round(cohplotdata$accndvicoh.ts2,2)*100])
-text(0.99*par()$usr[1],0.99*par()$usr[4],"b)",cex=1.5)
-
-par(mar=c(5,1,5,1))
-image(matrix(1:100,nrow=1),col=pal,xaxt="n",yaxt="n")
-axis(2,at=seq(0,1,0.2))
-
-dev.off()
+# tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig3_coherencemap.tif", units="in",
+#      res=300, width=6.5, height=7.5)
+# 
+# layout(laymat)
+# par(mar=c(0,0,1.5,0))
+# 
+# plot(lagosstates, main="Short timescale coherence")
+# points(cohplotdata$nhd_long, cohplotdata$nhd_lat, pch=16, cex=1.5, col=pal[round(cohplotdata$accndvicoh.ts1,2)*100])
+# text(0.99*par()$usr[1],0.99*par()$usr[4],"a)",cex=1.5)
+# 
+# plot(lagosstates, main="Long timescale coherence")
+# points(cohplotdata$nhd_long, cohplotdata$nhd_lat, pch=16, cex=1.5, col=pal[round(cohplotdata$accndvicoh.ts2,2)*100])
+# text(0.99*par()$usr[1],0.99*par()$usr[4],"b)",cex=1.5)
+# 
+# par(mar=c(5,1,5,1))
+# image(matrix(1:100,nrow=1),col=pal,xaxt="n",yaxt="n")
+# axis(2,at=seq(0,1,0.2))
+# 
+# dev.off()
 
 ```
 
@@ -404,7 +405,7 @@ hist(predictors$doc)
 hist(predictors$prcp.normal)
 hist(predictors$shoredev)
 
-# predictors$log10_lake_area_ha<-log10(predictors$lake_area_ha) #not necessary to transform with random forests
+predictors$log10_lake_area_ha<-log10(predictors$lake_area_ha) #not necessary to transform with random forests
 # predictors$log10_lake_perim_meters<-log10(predictors$lake_perim_meters)
 # predictors$log10_maxdepth<-log10(predictors$maxdepth)
 # predictors$log10_pct.ag<-log10(predictors$pct.ag+1)
@@ -429,10 +430,43 @@ modvars.accndvi.philt<-modvars.accndvi[modvars.accndvi$accndvip.ts2<0.3,]
 ```{r modellingCoherence, echo=TRUE, cache=FALSE}
 
 # cforest.st<-partykit::cforest(accndvicoh.ts1 ~ lake_area_ha + lake_perim_meters + maxdepth + pct.ag + chla + tsi.cat + hu4_zoneid + cv.accndvi, 
-#                     data=modvars.accndvi, ntree=20000)
-cforest.st<-party::cforest(accndvicoh.ts1 ~ shoredev + lake_area_ha +  maxdepth + pct.ag + chla + tsi.cat + 
-                             hu4_zoneid + cv.accndvi + pct.wetlands + doc + prcp.normal,
-                    data=modvars.accndvi, controls=cforest_control(ntree=50000,mincriterion = 0.9))
+# #                     data=modvars.accndvi, ntree=20000)
+# cforest.st<-party::cforest(accndvicoh.ts1 ~ shoredev + lake_area_ha +  maxdepth + pct.ag + chla + tsi.cat + 
+#                              hu4_zoneid + cv.accndvi + pct.wetlands + doc + prcp.normal,
+#                     data=modvars.accndvi, controls=cforest_control(ntree=80000))
+
+lwgt<-modvars.accndvi$tslength/mean(modvars.accndvi$tslength)
+
+gam.cohst<-gam(accndvicoh.ts1 ~ s(shoredev) + s(prcp.normal) + s(log10(lake_area_ha)) + s(pct.ag),  weights=lwgt, data=modvars.accndvi, 
+               gamma=1.4, na.action = "na.fail")
+#dredge.cohst<-dredge(gam.cohst, evaluate=TRUE, m.lim=c(0,5))
+#importance(dredge.cohst)
+#modavg.cohst<-model.avg(dredge.cohst, fit=T)
+summary(gam.cohst)
+
+plot(modvars.accndvi$accndvicoh.ts1,predict(gam.cohst))
+
+topmod.cohst<-gam(accndvicoh.ts1 ~ s(shoredev,k=3) + s(log10(lake_area_ha),k=3) + s(prcp.normal,k=3) + s(pct.ag,k=3), data=modvars.accndvi,
+                  gamma=1)
+summary(topmod.cohst)
+
+
+gam.cohlt<-gam(accndvicoh.ts2 ~ s(shoredev,k=3) + s(log10(lake_area_ha),k=3) +  s(maxdepth,k=3) + s(pct.ag,k=3) + 
+                 s(chla,k=3) + tsi.cat + hu4_zoneid + s(cv.accndvi,k=3) + s(pct.wetlands,k=3) +  #removed doc because of NAs
+                 s(prcp.normal,k=3), data=modvars.accndvi, gamma=1,na.action = "na.fail")
+dredge.cohlt<-dredge(gam.cohlt, evaluate=TRUE, m.lim=c(0,5))
+importance(dredge.cohlt)
+modavg.cohlt<-model.avg(dredge.cohlt, fit=T)
+
+plot(modvars.accndvi$accndvicoh.ts1,predict(modavg.cohlt))
+
+topmod.cohlt<-gam(accndvicoh.ts1 ~ s(pct.wetlands,k=3) + s(cv.accndvi,k=3) + s(prcp.normal,k=3) + s(maxdepth,k=3), data=modvars.accndvi,
+                  gamma=1)
+summary(topmod.cohlt)
+
+
+
+
 predcoh.st<-predict(cforest.st, newdata=modvars.accndvi,type="response")
 #hist(predcoh.st)
 #hist(modvars.accndvi$accndvicoh.ts1)
@@ -457,7 +491,7 @@ pdp.tsi.coh.st<-partial(cforest.st, pred.var="tsi.cat", train=modvars.accndvi, t
 
 cforest.lt<-party::cforest(accndvicoh.ts2 ~ shoredev + lake_area_ha + maxdepth + pct.ag + chla + tsi.cat + hu4_zoneid 
                            + cv.accndvi+ pct.wetlands + doc + prcp.normal, 
-                    data=modvars.accndvi, controls=cforest_control(ntree=50000,mincriterion = 0.9))
+                    data=modvars.accndvi, controls=cforest_control(ntree=80000))
 predcoh.lt<-predict(cforest.lt, newdata=modvars.accndvi)
 # hist(predcoh.lt)
 # hist(modvars.accndvi$accndvicoh.ts2)
@@ -487,7 +521,7 @@ pdp.maxdepth.coh.lt<-partial(cforest.lt, pred.var="maxdepth", train=modvars.accn
 
 cforest.phi.st<-cforest(cos(accndviphi.ts1) ~ shoredev + lake_area_ha + maxdepth + pct.ag + chla + tsi.cat + 
                           hu4_zoneid + cv.accndvi+ pct.wetlands + doc + prcp.normal, 
-                        data=modvars.accndvi.phist,controls=cforest_control(ntree=50000))
+                        data=modvars.accndvi.phist,controls=cforest_control(ntree=40000))
 predphi.st<-predict(cforest.phi.st, newdata=modvars.accndvi.phist)
 # hist(predphi.st)
 # hist(cos(modvars.accndvi.phist$accndviphi.ts1))
@@ -513,7 +547,7 @@ pdp.region.phi.st<-partial(cforest.phi.st, pred.var="hu4_zoneid", train=modvars.
 
 cforest.phi.lt<-cforest(cos(accndviphi.ts2) ~ shoredev + lake_area_ha + maxdepth + pct.ag + chla + tsi.cat + hu4_zoneid + 
                           cv.accndvi + pct.wetlands + doc + prcp.normal, 
-                        data=modvars.accndvi.philt,controls=cforest_control(ntree=50000))
+                        data=modvars.accndvi.philt,controls=cforest_control(ntree=40000))
 predphi.lt<-predict(cforest.phi.lt, newdata=modvars.accndvi.philt)
 # hist(predphi.lt)
 # hist(cos(modvars.accndvi.philt$accndviphi.ts2))
