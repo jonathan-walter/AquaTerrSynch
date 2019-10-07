@@ -117,4 +117,4 @@ makeMNMPCAannualts<-function(dir, tsvars="Chlorophyll a, corrected for pheophyti
   return(list(lakeinfo=lakeinfo, lakedata=lakedata))  
 }
 
-test<-makeMNMPCAannualts(dir="/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/LAGOS Extended/MN_MPCA")
+#test<-makeMNMPCAannualts(dir="/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/LAGOS Extended/MN_MPCA")

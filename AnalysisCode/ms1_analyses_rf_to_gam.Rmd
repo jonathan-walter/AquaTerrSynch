@@ -24,6 +24,7 @@ library(pdp)
 library(party)
 library(spatstat)
 library(caret)
+library(mgcv)
 
 rm(list=ls())
 
@@ -37,7 +38,7 @@ Data produced in 'ms1_prep.Rmd' are loaded.
 
 ```{r load workspace, echo=TRUE, cache=FALSE}
 
-load("/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/RData files/ms1_analysis_inprogress1_v10873.RData")
+load("~/Box Sync/NSF EAGER Synchrony/Data/RData files/ms1_analysis_inprogress1_v10873.RData")
 
 ```
 
@@ -302,6 +303,23 @@ dt.conn<-dt.conn[,colnames(dt.conn)!="buffer500m_nhdid"]
 dt.chag<-dt$hu12.chag
 dt.chag<-dt.chag[,!grepl("_min",colnames(dt.chag))]
 dt.chag<-dt.chag[,!grepl("_max",colnames(dt.chag))]
+dt.chag<-dt.chag[,!grepl("_ha",colnames(dt.chag))]
+dt.chag<-dt.chag[,!colnames(dt.chag)=="borderhu12s"]
+dt.chag$hu12_dep_no3_tavg_mean<-rowMeans(dt.chag[,grepl("hu12_dep_no3",colnames(dt.chag)) & 
+                                                   grepl("_mean",colnames(dt.chag))])
+dt.chag$hu12_dep_no3_tavg_std<-rowMeans(dt.chag[,grepl("hu12_dep_no3",colnames(dt.chag)) & 
+                                                   grepl("_std",colnames(dt.chag))])
+dt.chag$hu12_dep_so4_tavg_mean<-rowMeans(dt.chag[,grepl("hu12_dep_so4",colnames(dt.chag)) &
+                                                    grepl("_mean", colnames(dt.chag))])
+dt.chag$hu12_dep_so4_tavg_std<-rowMeans(dt.chag[,grepl("hu12_dep_so4",colnames(dt.chag)) &
+                                                    grepl("_std", colnames(dt.chag))])
+dt.chag$hu12_dep_totaln_tavg_mean<-rowMeans(dt.chag[,grepl("hu12_dep_totaln",colnames(dt.chag)) &
+                                                      grepl("_mean", colnames(dt.chag))])
+dt.chag$hu12_dep_totaln_tavg_std<-rowMeans(dt.chag[,grepl("hu12_dep_totaln",colnames(dt.chag)) &
+                                                      grepl("_std", colnames(dt.chag))])
+dt.chag<-dt.chag[,!(grepl("hu12_dep",colnames(dt.chag)) & grepl("_19",colnames(dt.chag)))]
+dt.chag<-dt.chag[,!(grepl("hu12_dep",colnames(dt.chag)) & grepl("_20",colnames(dt.chag)))]
+
 
 dt.geo<-dt$lakes.geo
 dt.geo<-dt$lakes.geo[,!colnames(dt.geo) %in% c("state_zoneid","iws_zoneid","edu_zoneid")]
@@ -312,6 +330,10 @@ dt.lulc<-dt.lulc[,!grepl("_nlcd1992_",colnames(dt.lulc))]
 dt.lulc<-dt.lulc[,!grepl("_nlcd2006_",colnames(dt.lulc))]
 dt.lulc<-dt.lulc[,!grepl("_nlcd2001_",colnames(dt.lulc))]
 dt.lulc<-dt.lulc[,colnames(dt.lulc)!="hu12_damdensity_pointsperha"]
+dt.lulc<-dt.lulc[,colnames(dt.lulc)!="hu12_damdensity_pointcount"]
+dt.lulc<-dt.lulc[,colnames(dt.lulc)!="hu12_roaddensity_sum_lengthm"]
+dt.lulc<-dt.lulc[,!grepl("_min",colnames(dt.lulc))]
+dt.lulc<-dt.lulc[,!grepl("_max",colnames(dt.lulc))]
 
 #depth
 depth<-lagosne_select(table="lakes_limno", vars=c("lagoslakeid","maxdepth"))
@@ -360,13 +382,11 @@ preds<-left_join(preds, depth, by="lagoslakeid")
 # modvars.conn<-left_join(pred.conn, coh.chlaXaccndvi, by="lagoslakeid")
 # modvars.chag<-left_join(pred.chag, coh.chlaXaccndvi, by="lagoslakeid")
 
-
 #huc2 and huc4 watershed codes
-huc_codes<-read.csv("/Users/jonathanwalter/GitHub/AquaTerrSynch/AnalysisCode/match_huc_codes.csv", colClasses = 'character')
+huc_codes<-read.csv("~/GitHub/AquaTerrSynch/AnalysisCode/match_huc_codes.csv", colClasses = 'character')
 
 #state info
 states<-lagosne_select(table="state", vars=c("state_zoneid","state_name"))
-
 
 for(nn in 1:ncol(preds)){
   
@@ -376,8 +396,6 @@ for(nn in 1:ncol(preds)){
   
 }
 
-
-
 ```
 
 
@@ -385,7 +403,7 @@ for(nn in 1:ncol(preds)){
 
 rfdat.cohst<-left_join(coh.chlaXaccndvi[,c(10,3)], preds)
 rfdat.cohst<-rfdat.cohst[,!colnames(rfdat.cohst) %in% c("lagoslakeid","start","end","lakes_nhdid","hu12_zoneid","tslength","county_zoneid")]
-rfdat.cohst<-rfdat.cohst[,!grepl("borderhu12s",rfdat.cohst)]
+rfdat.cohst<-rfdat.cohst[,!grepl("borderhu12s",colnames(rfdat.cohst))]
 
 for(nn in 1:ncol(rfdat.cohst)){
   if(is.character(rfdat.cohst[,nn])){
@@ -405,7 +423,17 @@ predcoh.st<-predict(cf.cohst, newdata=rfdat.cohst,type="response")
 # abline(a=0,b=1)
 cor.test(predcoh.st,rfdat.cohst$accndvicoh.ts1)
 
+```
+```{r gam_cohst, echo=TRUE, cache=FALSE}
+lwgt<-preds$tslength/mean(preds$tslength)
 
+gam.cohst<-gam(accndvicoh.ts1 ~ s(buffer500m_streamdensity_midreaches_density_mperha) + s(hu12_nlcd2011_pct_31 ) +
+               s(buffer500m_streamdensity_streams_density_mperha) + s(hu12_baseflowindex_mean) + 
+                 s(hu12_prism_ppt_30yr_normal_800mm2_annual_mean), data=rfdat.cohst, gamma=1, weights=lwgt)
+gam.check(gam.cohst)
+concurvity(gam.cohst)
+summary(gam.cohst)
+plot(rfdat.cohst$accndvicoh.ts1, predict(gam.cohst, rfdat.cohst))
 
 ```
 
@@ -430,77 +458,97 @@ predcoh.lt<-predict(cf.cohlt, newdata=rfdat.cohlt,type="response")
 plot(predcoh.lt, rfdat.cohlt$accndvicoh.ts2, xlab="predicted", ylab="empirical", main="Coherence, long ts",
      xlim=c(0,1), ylim=c(0,1))
 abline(a=0,b=1)
-cor.test(predcoh.st,rfdat.cohlt$accndvicoh.ts2)
+cor.test(predcoh.lt,rfdat.cohlt$accndvicoh.ts2)
 
+```
+```{r gam_cohlt, echo=TRUE, cache=FALSE}
+lwgt<-preds$tslength/mean(preds$tslength)
 
-
+gam.cohlt<-gam(accndvicoh.ts2 ~ s(hu12_nlcd2011_pct_90 ) + s(hu12_canopy2001_mean) + s(cv.accndvi) + 
+                 s(hu12_dep_totaln_tavg_mean) + hu6_zoneid, data=rfdat.cohlt, gamma=1, weights=lwgt)
+gam.check(gam.cohlt)
+concurvity(gam.cohlt)
+summary(gam.cohlt)
+plot(rfdat.cohlt$accndvicoh.ts2, predict(gam.cohlt, rfdat.cohlt))
 
 ```
 
-```{r modellingPhase, echo=TRUE, cache=FALSE}
+```{r rfPhase_st, echo=TRUE, cache=FALSE}
 
-cforest.phi.st<-cforest(cos(accndviphi.ts1) ~ shoredev + lake_area_ha + maxdepth + pct.ag + chla + tsi.cat + 
-                          hu4_zoneid + cv.accndvi+ pct.wetlands + doc + prcp.normal, 
-                        data=modvars.accndvi.phist,controls=cforest_control(ntree=50000))
-predphi.st<-predict(cforest.phi.st, newdata=modvars.accndvi.phist)
-# hist(predphi.st)
-# hist(cos(modvars.accndvi.phist$accndviphi.ts1))
-plot(predphi.st, cos(modvars.accndvi.phist$accndviphi.ts1), xlab="predicted", ylab="empirical", main="cos(phase), short ts",
-     xlim=c(-1,1), ylim=c(-1,1))
-abline(a=0,b=1)
-cor.test(predphi.st,cos(modvars.accndvi.phist$accndviphi.ts1))
-varimp.phi.st<-varimp(cforest.phi.st)
-print(varimp.phi.st[order(varimp.phi.st,decreasing=TRUE)])
+rfdat.phist<-left_join(coh.chlaXaccndvi[,c(10,2)], preds)
+rfdat.phist<-rfdat.phist[,!colnames(rfdat.phist) %in% 
+                           c("lagoslakeid","start","end","lakes_nhdid","hu12_zoneid","tslength","county_zoneid")]
+rfdat.phist<-rfdat.phist[,!grepl("borderhu12s",colnames(rfdat.phist))]
 
+rfdat.phist<-rfdat.phist[coh.chlaXaccndvi$accndvip.ts1<0.3,]
 
+for(nn in 1:ncol(rfdat.phist)){
+  if(is.character(rfdat.phist[,nn])){
+    rfdat.phist[,nn]<-as.factor(rfdat.phist[,nn])
+  }
+}
 
+cf.phist<-party::cforest(cos(accndviphi.ts1) ~ ., data=rfdat.phist, 
+                         controls=cforest_control(ntree=50000,mincriterion = 0.9,mtry=3))
 
-cforest.phi.lt<-cforest(cos(accndviphi.ts2) ~ shoredev + lake_area_ha + maxdepth + pct.ag + chla + tsi.cat + hu4_zoneid + 
-                          cv.accndvi + pct.wetlands + doc + prcp.normal, 
-                        data=modvars.accndvi.philt,controls=cforest_control(ntree=50000))
-predphi.lt<-predict(cforest.phi.lt, newdata=modvars.accndvi.philt)
-# hist(predphi.lt)
-# hist(cos(modvars.accndvi.philt$accndviphi.ts2))
-plot(predphi.lt, cos(modvars.accndvi.philt$accndviphi.ts2), xlab="predicted", ylab="empirical", main="cos(phase), short ts",
-     xlim=c(-1,1), ylim=c(-1,1))
-abline(a=0,b=1)
-cor.test(predphi.lt,cos(modvars.accndvi.philt$accndviphi.ts2))
-varimp.phi.lt<-varimp(cforest.phi.lt)
-print(varimp.phi.lt[order(varimp.phi.lt, decreasing=TRUE)])
-
-
-save.image("~/Box Sync/NSF EAGER Synchrony/Data/RData files/ms1_analyses_complete_20190729.RData")
+varimp.phi.st<-varimp(cf.phist)
+print(varimp.phi.st[order(varimp.phi.st, decreasing=T)][1:20])
+predphi.st<-predict(cf.phist, newdata=rfdat.phist,type="response")
+cor.test(predphi.st,cos(rfdat.phist$accndviphi.ts1))
 
 ```
-```{r plot predictions, echo=TRUE, cache=FALSE}
 
-tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/figS1_predvsemp.tif", units="in",
-     res=300, width=6.5, height=6.5)
+```{r gam_phist, echo=TRUE, cache=FALSE}
+lwgt<-preds$tslength[coh.chlaXaccndvi$accndvip.ts1<0.3]/mean(preds$tslength[coh.chlaXaccndvi$accndvip.ts1<0.3])
 
-par(mar=c(2.5,2.5,1.5,1),mgp=c(1.7,0.5,0),mfrow=c(2,2),oma=c(1.2,1.2,0,0))
-
-plot(predcoh.st, modvars.accndvi$accndvicoh.ts1, xlim=c(0,1), ylim=c(0,1), xlab="", ylab="")
-mtext("Short timescale coherence",line=0.2)
-abline(a=0,b=1)
-
-plot(predcoh.lt, modvars.accndvi$accndvicoh.ts2, xlim=c(0,1), ylim=c(0,1), xlab="", ylab="")
-mtext("Long timescale coherence",line=0.2)
-abline(a=0,b=1)
-
-plot(predphi.st, cos(modvars.accndvi.phist$accndviphi.ts1), xlim=c(-1,1), ylim=c(-1,1), xlab="", ylab="")
-mtext("Short timescale cos(phase)",line=0.2)
-abline(a=0,b=1)
-
-plot(predphi.lt, cos(modvars.accndvi.philt$accndviphi.ts2), xlim=c(-1,1), ylim=c(-1,1), xlab="", ylab="")
-mtext("Short timescale cos(phase)",line=0.2)
-abline(a=0,b=1)
-
-mtext("Predicted",1,outer=T)
-mtext("Empirical",2,outer=T)
-
-dev.off()
-
+gam.phist<-gam(cos(accndviphi.ts1) ~ s(maxdepth) + s(upstream_lakes_4ha_count) + 
+                 s(wlconnections_openwaterwetlands_contributing_area_), 
+               data=rfdat.phist, gamma=1, weights=lwgt)
+gam.check(gam.phist)
+concurvity(gam.phist)
+summary(gam.phist)
+plot(cos(rfdat.phist$accndviphi.ts1), predict(gam.phist, rfdat.phist))
 
 ```
+
+```{r rfPhase_lt, echo=TRUE, cache=FALSE}
+
+rfdat.philt<-left_join(coh.chlaXaccndvi[,c(10,5)], preds)
+rfdat.philt<-rfdat.philt[,!colnames(rfdat.philt) %in% 
+                           c("lagoslakeid","start","end","lakes_nhdid","hu12_zoneid","tslength","county_zoneid")]
+rfdat.philt<-rfdat.philt[,!grepl("borderhu12s",colnames(rfdat.philt))]
+
+rfdat.philt<-rfdat.philt[coh.chlaXaccndvi$accndvip.ts2<0.3,]
+
+for(nn in 1:ncol(rfdat.philt)){
+  if(is.character(rfdat.philt[,nn])){
+    rfdat.philt[,nn]<-as.factor(rfdat.philt[,nn])
+  }
+}
+
+cf.philt<-party::cforest(cos(accndviphi.ts2) ~ ., data=rfdat.philt,
+                         controls=cforest_control(ntree=50000,mincriterion = 0.9,mtry=3))
+
+varimp.phi.lt<-varimp(cf.philt)
+print(varimp.phi.lt[order(varimp.phi.lt, decreasing=T)][1:20])
+predphi.lt<-predict(cf.philt, newdata=rfdat.philt,type="response")
+cor.test(predphi.lt,cos(rfdat.philt$accndviphi.ts2))
+
+```
+
+```{r gam_philt, echo=TRUE, cache=FALSE}
+lwgt<-preds$tslength[coh.chlaXaccndvi$accndvip.ts2<0.3]/mean(preds$tslength[coh.chlaXaccndvi$accndvip.ts2<0.3])
+
+gam.philt<-gam(cos(accndviphi.ts2) ~ hu4_zoneid + s(hu12_tri_mean) + 
+                 s(buffer500m_streamdensity_headwaters_density_mperha), 
+               data=rfdat.philt, gamma=1, weights=lwgt)
+gam.check(gam.philt)
+concurvity(gam.philt)
+summary(gam.philt)
+plot(cos(rfdat.philt$accndviphi.ts2), predict(gam.philt, rfdat.philt))
+
+```
+
+
 
 
