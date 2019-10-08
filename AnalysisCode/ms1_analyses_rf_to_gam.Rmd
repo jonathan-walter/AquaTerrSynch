@@ -549,6 +549,14 @@ plot(cos(rfdat.philt$accndviphi.ts2), predict(gam.philt, rfdat.philt))
 
 ```
 
+```{r roughGAMplotting, echo=TRUE, cache=FALSE}
+
+plot(gam.cohst, main="coherence, short")
+plot(gam.cohlt, main="coherence, long")
+plot(gam.phist, main="cos(phase), short")
+plot(gam.philt, main="cos(phase), long")
+
+```
 
 
 
