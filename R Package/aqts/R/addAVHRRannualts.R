@@ -48,14 +48,15 @@ addAVHRRannualts<-function(lakelist, avhrrdata, buffdist=5000, aggfun="mean"){
   #loop through lakes and extract AVHRR time series
   for(ii in 1:nrow(lakeinfo)){
     lakebuffer.ii<-buffer(lakepts.prj[ii,], width=buffdist[ii], dissolve=FALSE)
-    #avhrrstack.ii<-mask(avhrrdata,lakebuffer.ii)
+    #plot(lakebuffer.ii)
+    avhrrstack.ii<-mask(avhrrdata,lakebuffer.ii)
     
     if(!aggfun %in% c("mean","median")){stop("aggfun argument must be 'mean' or 'median'.")}
     else if(aggfun=="mean"){
-      ts.ii<-cellStats(avhrrdata, mean, na.rm=TRUE)
+      ts.ii<-cellStats(avhrrstack.ii, mean, na.rm=TRUE)
     }
     else if(aggfun=="median"){
-      ts.ii<-cellStats(avhrrdata, median, na.rm=TRUE)
+      ts.ii<-cellStats(avhrrstack.ii, median, na.rm=TRUE)
     }
 
     lakeyrs<-lakeinfo$start[ii]:lakeinfo$end[ii]

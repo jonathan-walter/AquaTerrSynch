@@ -38,7 +38,7 @@ Data produced in 'ms1_prep.Rmd' are loaded.
 
 ```{r load workspace, echo=TRUE, cache=FALSE}
 
-load("~/Box Sync/NSF EAGER Synchrony/Data/RData files/ms1_analysis_inprogress1_v10873.RData")
+load("~/Box Sync/NSF EAGER Synchrony/Data/RData files/ms1_analysis_inprogress1_v10873_2.RData")
 
 ```
 
@@ -214,7 +214,7 @@ rose(coh.chlaXaccndvi$accndviphi.ts2[coh.chlaXaccndvi$accndvip.ts2<0.3], unit="r
 
 #hist(coh.chlaXmaxndvi$maxndviphi.ts1[coh.chlaXmaxndvi$maxndvicoh.ts2>0.6]/pi, main="Maximum NDVI, short timescales", xlab="Phase (pi)", ylab="Frequency", breaks=5)
 
-tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig2_distributions.tif", units="in",
+tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig2_distributions_20191031.tif", units="in",
      res=300, width=6.5, height=6.5)
 
 par(mar=c(3,3,2,1),mgp=c(1.7,0.5,0),mfrow=c(2,2),cex.main=0.9)
@@ -300,6 +300,7 @@ dt.conn<-dt$buffer500m.conn
 dt.conn<-dt.conn[,!grepl("sum_lengthm",colnames(dt.conn))]
 dt.conn<-dt.conn[,colnames(dt.conn)!="buffer500m_nhdid"]
 
+
 dt.chag<-dt$hu12.chag
 dt.chag<-dt.chag[,!grepl("_min",colnames(dt.chag))]
 dt.chag<-dt.chag[,!grepl("_max",colnames(dt.chag))]
@@ -319,10 +320,13 @@ dt.chag$hu12_dep_totaln_tavg_std<-rowMeans(dt.chag[,grepl("hu12_dep_totaln",coln
                                                       grepl("_std", colnames(dt.chag))])
 dt.chag<-dt.chag[,!(grepl("hu12_dep",colnames(dt.chag)) & grepl("_19",colnames(dt.chag)))]
 dt.chag<-dt.chag[,!(grepl("hu12_dep",colnames(dt.chag)) & grepl("_20",colnames(dt.chag)))]
+dt.chag<-dt.chag[,!(grepl("_std",colnames(dt.chag)))]
+dt.chag<-dt.chag[,!grepl("surficialgeology",colnames(dt.chag))]
 
 
 dt.geo<-dt$lakes.geo
-dt.geo<-dt$lakes.geo[,!colnames(dt.geo) %in% c("state_zoneid","iws_zoneid","edu_zoneid")]
+dt.geo<-dt$lakes.geo[,!colnames(dt.geo) %in% c("state_zoneid","iws_zoneid","edu_zoneid","county_zoneid")]
+dt.geo<-dt.geo[,!grepl("_count",colnames(dt.geo))]
 
 dt.lulc<-dt$hu12.lulc
 dt.lulc<-dt.lulc[,!grepl("_ha_",colnames(dt.lulc))]
@@ -334,6 +338,7 @@ dt.lulc<-dt.lulc[,colnames(dt.lulc)!="hu12_damdensity_pointcount"]
 dt.lulc<-dt.lulc[,colnames(dt.lulc)!="hu12_roaddensity_sum_lengthm"]
 dt.lulc<-dt.lulc[,!grepl("_min",colnames(dt.lulc))]
 dt.lulc<-dt.lulc[,!grepl("_max",colnames(dt.lulc))]
+dt.lulc<-dt.lulc[,!grepl("_std",colnames(dt.lulc))]
 
 #depth
 depth<-lagosne_select(table="lakes_limno", vars=c("lagoslakeid","maxdepth"))
@@ -359,7 +364,8 @@ tsi.chl$tsi.cat[tsi.chl$tsi >= 70] <-"hypereutrophic"
 #CV of terrestrial NDVI
 cv.accndvi<-NULL
 for(lake in 1:length(analysislakes$lakedata)){
-  tmp<-analysislakes$lakedata[[lake]][rownames(analysislakes$lakedata[[lake]])=="accndvi",]
+  tmp<-analysislakes$lakedata[[lake]][rownames(analysislakes$lakedata[[lake]])=="avhrrdata",]
+  
   cv.accndvi<-c(cv.accndvi, sd(tmp)/mean(tmp))  
  # rm(tmp)
 }
@@ -378,6 +384,21 @@ preds<-left_join(preds, dt.lulc, by="hu12_zoneid")
 preds<-left_join(preds, avg.chla, by="lagoslakeid")
 preds<-left_join(preds, cv.accndvi, by="lagoslakeid")
 preds<-left_join(preds, depth, by="lagoslakeid")
+preds<-left_join(preds, shoredev, by="lagoslakeid")
+
+#remove any variables that don't vary in this dataset
+# for(nn in 1:ncol(preds)){
+#   print(colnames(preds)[nn])
+#   print(unique(preds[,nn]))
+# }
+
+preds<-preds[,!colnames(preds) %in% c("hu12_surficialgeology_beach_pct",
+                                      "hu12_surficialgeology_colluv_pct",
+                                      "hu12_surficialgeology_grus_pct",
+                                      "hu12_surficialgeology_other_pct",
+                                      "hu12_surficialgeology_solif_pct",
+                                      "hu12_surficialgeology_till_oth_pct",
+                                      "hu12_nlcd2011_pct_0")]
 
 # modvars.conn<-left_join(pred.conn, coh.chlaXaccndvi, by="lagoslakeid")
 # modvars.chag<-left_join(pred.chag, coh.chlaXaccndvi, by="lagoslakeid")
@@ -414,7 +435,7 @@ for(nn in 1:ncol(rfdat.cohst)){
 cf.cohst<-party::cforest(accndvicoh.ts1 ~ ., data=rfdat.cohst, controls=cforest_control(ntree=50000,mincriterion = 0.9))
 
 varimp.coh.st<-varimp(cf.cohst)
-print(varimp.coh.st[order(varimp.coh.st, decreasing=T)][1:20])
+print(varimp.coh.st[order(varimp.coh.st, decreasing=T)][1:10])
 #hist(predcoh.st)
 #hist(modvars.accndvi$accndvicoh.ts1)
 predcoh.st<-predict(cf.cohst, newdata=rfdat.cohst,type="response")
@@ -427,9 +448,8 @@ cor.test(predcoh.st,rfdat.cohst$accndvicoh.ts1)
 ```{r gam_cohst, echo=TRUE, cache=FALSE}
 lwgt<-preds$tslength/mean(preds$tslength)
 
-gam.cohst<-gam(accndvicoh.ts1 ~ s(buffer500m_streamdensity_midreaches_density_mperha) + s(hu12_nlcd2011_pct_31 ) +
-               s(buffer500m_streamdensity_streams_density_mperha) + s(hu12_baseflowindex_mean) + 
-                 s(hu12_prism_ppt_30yr_normal_800mm2_annual_mean), data=rfdat.cohst, gamma=1, weights=lwgt)
+gam.cohst<-gam(accndvicoh.ts1 ~ s(cv.accndvi) + hu8_zoneid + s(hu12_dep_totaln_tavg_mean) +
+               s(hu12_nlcd2011_pct_90) + s(hu12_nlcd2011_pct_95), data=rfdat.cohst, gamma=1, weights=lwgt)
 gam.check(gam.cohst)
 concurvity(gam.cohst)
 summary(gam.cohst)
@@ -440,7 +460,7 @@ plot(rfdat.cohst$accndvicoh.ts1, predict(gam.cohst, rfdat.cohst))
 ```{r rfCoherence_lt, echo=TRUE, cache=FALSE}
 rfdat.cohlt<-left_join(coh.chlaXaccndvi[,c(10,6)], preds)
 rfdat.cohlt<-rfdat.cohlt[,!colnames(rfdat.cohlt) %in% c("lagoslakeid","start","end","lakes_nhdid","hu12_zoneid","tslength","county_zoneid")]
-rfdat.cohlt<-rfdat.cohlt[,!grepl("borderhu12s",rfdat.cohlt)]
+rfdat.cohlt<-rfdat.cohlt[,!grepl("borderhu12s",colnames(rfdat.cohlt))]
 
 for(nn in 1:ncol(rfdat.cohlt)){
   if(is.character(rfdat.cohlt[,nn])){
@@ -450,22 +470,23 @@ for(nn in 1:ncol(rfdat.cohlt)){
 
 cf.cohlt<-party::cforest(accndvicoh.ts2 ~ ., data=rfdat.cohlt, controls=cforest_control(ntree=50000,mincriterion = 0.9))
 
-varimp.coh.st<-varimp(cf.cohlt)
-print(varimp.coh.st[order(varimp.coh.st, decreasing=T)][1:20])
+varimp.coh.lt<-varimp(cf.cohlt)
+print(varimp.coh.lt[order(varimp.coh.lt, decreasing=T)][1:10])
 #hist(predcoh.st)
 #hist(modvars.accndvi$accndvicoh.ts1)
 predcoh.lt<-predict(cf.cohlt, newdata=rfdat.cohlt,type="response")
-plot(predcoh.lt, rfdat.cohlt$accndvicoh.ts2, xlab="predicted", ylab="empirical", main="Coherence, long ts",
-     xlim=c(0,1), ylim=c(0,1))
-abline(a=0,b=1)
+# plot(predcoh.lt, rfdat.cohlt$accndvicoh.ts2, xlab="predicted", ylab="empirical", main="Coherence, long ts",
+#      xlim=c(0,1), ylim=c(0,1))
+# abline(a=0,b=1)
 cor.test(predcoh.lt,rfdat.cohlt$accndvicoh.ts2)
 
 ```
 ```{r gam_cohlt, echo=TRUE, cache=FALSE}
 lwgt<-preds$tslength/mean(preds$tslength)
 
-gam.cohlt<-gam(accndvicoh.ts2 ~ s(hu12_nlcd2011_pct_90 ) + s(hu12_canopy2001_mean) + s(cv.accndvi) + 
-                 s(hu12_dep_totaln_tavg_mean) + hu6_zoneid, data=rfdat.cohlt, gamma=1, weights=lwgt)
+gam.cohlt<-gam(accndvicoh.ts2 ~ hu8_zoneid + s(hu12_nlcd2011_pct_52) + s(cv.accndvi) + 
+                 s(wlconnections_forestedwetlands_shoreline_km) + 
+                 s(hu12_prism_ppt_30yr_normal_800mm2_annual_mean), data=rfdat.cohlt, gamma=1, weights=lwgt)
 gam.check(gam.cohlt)
 concurvity(gam.cohlt)
 summary(gam.cohlt)
@@ -492,7 +513,7 @@ cf.phist<-party::cforest(cos(accndviphi.ts1) ~ ., data=rfdat.phist,
                          controls=cforest_control(ntree=50000,mincriterion = 0.9,mtry=3))
 
 varimp.phi.st<-varimp(cf.phist)
-print(varimp.phi.st[order(varimp.phi.st, decreasing=T)][1:20])
+print(varimp.phi.st[order(varimp.phi.st, decreasing=T)][1:10])
 predphi.st<-predict(cf.phist, newdata=rfdat.phist,type="response")
 cor.test(predphi.st,cos(rfdat.phist$accndviphi.ts1))
 
@@ -501,8 +522,9 @@ cor.test(predphi.st,cos(rfdat.phist$accndviphi.ts1))
 ```{r gam_phist, echo=TRUE, cache=FALSE}
 lwgt<-preds$tslength[coh.chlaXaccndvi$accndvip.ts1<0.3]/mean(preds$tslength[coh.chlaXaccndvi$accndvip.ts1<0.3])
 
-gam.phist<-gam(cos(accndviphi.ts1) ~ s(maxdepth) + s(upstream_lakes_4ha_count) + 
-                 s(wlconnections_openwaterwetlands_contributing_area_), 
+gam.phist<-gam(cos(accndviphi.ts1) ~ s(wlconnections_openwaterwetlands_shoreline_km) + 
+                 s(buffer500m_streamdensity_headwaters_density_mperha) + 
+                 s(chla), 
                data=rfdat.phist, gamma=1, weights=lwgt)
 gam.check(gam.phist)
 concurvity(gam.phist)
@@ -530,7 +552,7 @@ cf.philt<-party::cforest(cos(accndviphi.ts2) ~ ., data=rfdat.philt,
                          controls=cforest_control(ntree=50000,mincriterion = 0.9,mtry=3))
 
 varimp.phi.lt<-varimp(cf.philt)
-print(varimp.phi.lt[order(varimp.phi.lt, decreasing=T)][1:20])
+print(varimp.phi.lt[order(varimp.phi.lt, decreasing=T)][1:10])
 predphi.lt<-predict(cf.philt, newdata=rfdat.philt,type="response")
 cor.test(predphi.lt,cos(rfdat.philt$accndviphi.ts2))
 
@@ -540,7 +562,7 @@ cor.test(predphi.lt,cos(rfdat.philt$accndviphi.ts2))
 lwgt<-preds$tslength[coh.chlaXaccndvi$accndvip.ts2<0.3]/mean(preds$tslength[coh.chlaXaccndvi$accndvip.ts2<0.3])
 
 gam.philt<-gam(cos(accndviphi.ts2) ~ hu4_zoneid + s(hu12_tri_mean) + 
-                 s(buffer500m_streamdensity_headwaters_density_mperha), 
+                 s(hu12_nlcd2011_pct_41), 
                data=rfdat.philt, gamma=1, weights=lwgt)
 gam.check(gam.philt)
 concurvity(gam.philt)
@@ -551,12 +573,89 @@ plot(cos(rfdat.philt$accndviphi.ts2), predict(gam.philt, rfdat.philt))
 
 ```{r roughGAMplotting, echo=TRUE, cache=FALSE}
 
-plot(gam.cohst, main="coherence, short")
-plot(gam.cohlt, main="coherence, long")
-plot(gam.phist, main="cos(phase), short")
-plot(gam.philt, main="cos(phase), long")
+# plot(gam.cohst, main="coherence, short")
+# plot(gam.cohlt, main="coherence, long")
+# plot(gam.phist, main="cos(phase), short")
+# plot(gam.philt, main="cos(phase), long")
+
+```
+```{r plot varimp}
+
+print(varimp.coh.st[order(varimp.coh.st, decreasing=T)][1:10])
+ltxt.st<-c("cv(NDVI)","HUC-8 sub-basin","total N deposition","% woody wetlands","% herbaceous wetlands",
+           "shrub wetlands shoreline","all wetlands shoreline","slope","topographic roughness","forested wetlands shoreline")
+
+print(varimp.coh.lt[order(varimp.coh.lt, decreasing=T)][1:10])
+ltxt.lt<-c("HUC-8 sub-basin","% shrub/scrub","cv(NDVI)","annual precipitation","all wetlands contrib. area",
+           "forested wetlands shoreline","% woody wetlands","all wetlands shoreline","sulfate deposition",
+           "groundwater recharge")
+
+print(varimp.phi.st[order(varimp.phi.st, decreasing = T)][1:10])
+ltxt.phist<-c("open wetlands shoreline","headwaters density","mean chlorophyll-a","stream density",
+              "open wetlands contrib. area","% developed open space","nitrate deposition", "road density",
+              "% developed low intensity","all wetlands contrib. area")
+
+print(varimp.phi.lt[order(varimp.phi.lt, decreasing = T)][1:10])
+ltxt.philt<-c("HUC-4 subregion","HUC-6 basin","slope","topographic roughness","% deciduous forest","% woody wetlands",
+               "headwaters density","total N deposition","HUC-8 sub-basin","stream density")
+
+tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig4_varimp_top10.tif",units="in",res=300,width=6.5, height=6.5)
+
+par(mfrow=c(2,2), mar=c(5,11,1,1), cex.main=0.9, cex.axis=0.9)
+
+barplot(rev(varimp.coh.st[order(varimp.coh.st, decreasing=T)][1:10]),names.arg=rev(ltxt.st),las=2,main="Short timescale coher.", horiz=T)
+
+barplot(rev(varimp.coh.lt[order(varimp.coh.lt, decreasing=T)][1:10]),names.arg=rev(ltxt.lt),las=2,main="Long timescale coher.", horiz=T)
+
+barplot(rev(varimp.phi.st[order(varimp.phi.st, decreasing=T)][1:10]),names.arg=rev(ltxt.phist),las=2,main="Short timescale phase", horiz=T)
+
+barplot(rev(varimp.phi.lt[order(varimp.phi.lt, decreasing=T)][1:10]),names.arg=rev(ltxt.philt),las=2,main="Long timescale phase", horiz=T)
+
+dev.off()
+
 
 ```
 
+```{r plot_gameffects}
+
+mar1<-c(3,1.5,0.5,1)
+#mar2<-c(2.5,1.5,1,1)
+fudge=1/40
+
+tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig5_gamfits.tif",units="in",res=300,width=6.5, height=6.5)
+
+par(mfrow=c(4,5),mgp=c(1.5,0.5,0),oma=c(0,2.5,0,0),mar=mar1)
+
+plot(gam.cohst,select=1,residuals=T,rug=FALSE,shade=T,cex=2,xlab="cv(NDVI)",ylab="short coherence")
+plot(NA,NA,xlab="HUC-8 sub-basin",xlim=c(0,1),ylim=c(0,1))
+plot(gam.cohst,select=2,residuals=T,rug=FALSE,shade=T,cex=2,xlab="total N deposition",ylab="")
+plot(gam.cohst,select=3,residuals=T,rug=FALSE,shade=T,cex=2,xlab="% woody wetlands",ylab="")
+plot(gam.cohst,select=4,residuals=T,rug=FALSE,shade=T,cex=2,xlab="% herbaceous wetld.",ylab="")
+
+plot(gam.phist,select=1,residuals=T,rug=FALSE,shade=T,cex=2,xlab="open wetlands shoreline",ylab="short phase")
+plot(gam.phist,select=2,residuals=T,rug=FALSE,shade=T,cex=2,xlab="headwaters density",ylab="")
+plot(gam.phist,select=3,residuals=T,rug=FALSE,shade=T,cex=2,xlab="mean chlorophyll-a",ylab="")
+plot.new()
+plot.new()
+
+plot(NA,NA,xlab="HUC-8 sub-basin",xlim=c(0,1),ylim=c(0,1))
+plot(gam.cohlt,select=1,residuals=T,rug=FALSE,shade=T,cex=2,xlab="% shrub/scrub",ylab="long coherence",ylim=c(-1,1))
+plot(gam.cohlt,select=2,residuals=T,rug=FALSE,shade=T,cex=2,xlab="cv(NDVI)",ylab="",ylim=c(-1,1))
+plot(gam.cohlt,select=3,residuals=T,rug=FALSE,shade=T,cex=2,xlab="annual precipitation",ylab="")
+plot(gam.cohlt,select=4,residuals=T,rug=FALSE,shade=T,cex=2,xlab="all wetld. contrib. area",ylab="",ylim=c(-1,1))
+
+plot(NA,NA,xlab="HUC-4 subregion",xlim=c(0,1),ylim=c(0,1),ylab="long phase")
+plot(gam.philt,select=1,residuals=T,rug=FALSE,shade=T,cex=2,xlab="slope",ylab="")
+plot(gam.philt,select=2,residuals=T,rug=FALSE,shade=T,cex=2,xlab="% deciduous forest",ylab="")
+
+mtext("Partial residuals",2,outer=T,line=1.2,cex=0.8)
+mtext("cos(long phase)",2,at=1/8+fudge,outer=T,line=0,cex=0.7)
+mtext("long coherence)",2,at=1/8+1/4+fudge,outer=T,line=0,cex=0.7)
+mtext("cos(short phase)",2,at=1/8+2/4+fudge,outer=T,line=0,cex=0.7)
+mtext("short coherence",2,at=1/8+3/4+fudge,outer=T,line=0,cex=0.7)
+
+dev.off()
+
+```
 
 

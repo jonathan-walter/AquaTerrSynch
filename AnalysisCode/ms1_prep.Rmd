@@ -72,11 +72,11 @@ nlcdwater<-raster("/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/Satel
 watermask<-nlcdwater<0.05
 
 accndvi<-mask(accndvi,watermask,maskvalue=0) #mask out pixels that have too much water in them
-maxndvi<-mask(maxndvi,watermask,maskvalue=0)
+#maxndvi<-mask(maxndvi,watermask,maskvalue=0)
 
 analysislakes<-addAVHRRannualts(analysislakes, accndvi, dbuff)
-analysislakes<-addAVHRRannualts(analysislakes, maxndvi, dbuff)
+#analysislakes<-addAVHRRannualts(analysislakes, maxndvi, dbuff)
 
-save.image("/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/RData files/ms1_analysis_inprogress1_v10873.RData")
+save.image("/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/RData files/ms1_analysis_inprogress1_v10873_2.RData")
 
 ```
