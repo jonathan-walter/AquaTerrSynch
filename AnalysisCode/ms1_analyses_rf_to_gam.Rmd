@@ -508,28 +508,48 @@ for(nn in 1:ncol(rfdat.phist)){
     rfdat.phist[,nn]<-as.factor(rfdat.phist[,nn])
   }
 }
-
-cf.phist<-party::cforest(cos(accndviphi.ts1) ~ ., data=rfdat.phist, 
+#cosine
+cf.cosphist<-party::cforest(cos(accndviphi.ts1) ~ ., data=rfdat.phist, 
                          controls=cforest_control(ntree=50000,mincriterion = 0.9,mtry=3))
 
-varimp.phi.st<-varimp(cf.phist)
+varimp.phi.st<-varimp(cf.cosphist)
 print(varimp.phi.st[order(varimp.phi.st, decreasing=T)][1:10])
-predphi.st<-predict(cf.phist, newdata=rfdat.phist,type="response")
-cor.test(predphi.st,cos(rfdat.phist$accndviphi.ts1))
+pred.cosphi.st<-predict(cf.cosphist, newdata=rfdat.phist,type="response")
+cor.test(pred.cosphi.st,cos(rfdat.phist$accndviphi.ts1))
+
+#sine
+cf.sinphist<-party::cforest(sin(accndviphi.ts1) ~ ., data=rfdat.phist, 
+                         controls=cforest_control(ntree=50000,mincriterion = 0.9,mtry=3))
+
+varimp.phi.st<-varimp(cf.sinphist)
+print(varimp.phi.st[order(varimp.phi.st, decreasing=T)][1:10])
+pred.sinphi.st<-predict(cf.sinphist, newdata=rfdat.phist,type="response")
+cor.test(pred.sinphi.st,sin(rfdat.phist$accndviphi.ts1))
 
 ```
 
 ```{r gam_phist, echo=TRUE, cache=FALSE}
 lwgt<-preds$tslength[coh.chlaXaccndvi$accndvip.ts1<0.3]/mean(preds$tslength[coh.chlaXaccndvi$accndvip.ts1<0.3])
 
-gam.phist<-gam(cos(accndviphi.ts1) ~ s(wlconnections_openwaterwetlands_shoreline_km) + 
+#cosine
+gam.cosphist<-gam(cos(accndviphi.ts1) ~ s(wlconnections_openwaterwetlands_shoreline_km) + 
                  s(buffer500m_streamdensity_headwaters_density_mperha) + 
                  s(chla), 
                data=rfdat.phist, gamma=1, weights=lwgt)
-gam.check(gam.phist)
-concurvity(gam.phist)
-summary(gam.phist)
-plot(cos(rfdat.phist$accndviphi.ts1), predict(gam.phist, rfdat.phist))
+gam.check(gam.cosphist)
+concurvity(gam.cosphist)
+summary(gam.cosphist)
+plot(cos(rfdat.phist$accndviphi.ts1), predict(gam.cosphist, rfdat.phist))
+
+#sine
+gam.sinphist<-gam(sin(accndviphi.ts1) ~ s(buffer500m_streamdensity_headwaters_density_mperha) + 
+                 s(hu12_dep_so4_tavg_mean ) + 
+                 s(buffer500m_streamdensity_streams_density_mperha), 
+               data=rfdat.phist, gamma=1, weights=lwgt)
+gam.check(gam.sinphist)
+concurvity(gam.sinphist)
+summary(gam.sinphist)
+plot(sin(rfdat.phist$accndviphi.ts1), predict(gam.sinphist, rfdat.phist))
 
 ```
 
@@ -548,36 +568,52 @@ for(nn in 1:ncol(rfdat.philt)){
   }
 }
 
-cf.philt<-party::cforest(cos(accndviphi.ts2) ~ ., data=rfdat.philt,
+#cosine
+cf.cosphilt<-party::cforest(cos(accndviphi.ts2) ~ ., data=rfdat.philt,
                          controls=cforest_control(ntree=50000,mincriterion = 0.9,mtry=3))
 
-varimp.phi.lt<-varimp(cf.philt)
-print(varimp.phi.lt[order(varimp.phi.lt, decreasing=T)][1:10])
-predphi.lt<-predict(cf.philt, newdata=rfdat.philt,type="response")
-cor.test(predphi.lt,cos(rfdat.philt$accndviphi.ts2))
+varimp.cosphi.lt<-varimp(cf.cosphilt)
+print(varimp.cosphi.lt[order(varimp.cosphi.lt, decreasing=T)][1:10])
+pred.cosphi.lt<-predict(cf.cosphilt, newdata=rfdat.philt,type="response")
+cor.test(pred.cosphi.lt,cos(rfdat.cosphilt$accndviphi.ts2))
+
+#sine
+cf.sinphilt<-party::cforest(sin(accndviphi.ts2) ~ ., data=rfdat.philt,
+                         controls=cforest_control(ntree=50000,mincriterion = 0.9,mtry=3))
+
+varimp.sinphi.lt<-varimp(cf.sinphilt)
+print(varimp.sinphi.lt[order(varimp.sinphi.lt, decreasing=T)][1:10])
+pred.sinphi.lt<-predict(cf.sinphilt, newdata=rfdat.philt,type="response")
+cor.test(pred.sinphi.lt,sin(rfdat.philt$accndviphi.ts2))
 
 ```
 
 ```{r gam_philt, echo=TRUE, cache=FALSE}
 lwgt<-preds$tslength[coh.chlaXaccndvi$accndvip.ts2<0.3]/mean(preds$tslength[coh.chlaXaccndvi$accndvip.ts2<0.3])
 
-gam.philt<-gam(cos(accndviphi.ts2) ~ hu4_zoneid + s(hu12_tri_mean) + 
+#cosine
+gam.cosphilt<-gam(cos(accndviphi.ts2) ~ hu4_zoneid + s(hu12_tri_mean) + 
                  s(hu12_nlcd2011_pct_41), 
                data=rfdat.philt, gamma=1, weights=lwgt)
-gam.check(gam.philt)
-concurvity(gam.philt)
-summary(gam.philt)
-plot(cos(rfdat.philt$accndviphi.ts2), predict(gam.philt, rfdat.philt))
+gam.check(gam.cosphilt)
+concurvity(gam.cosphilt)
+summary(gam.cosphilt)
+plot(cos(rfdat.cosphilt$accndviphi.ts2), predict(gam.cosphilt, rfdat.philt))
+
+#sine
+gam.sinphilt<-gam(sin(accndviphi.ts2) ~ hu4_zoneid + s(hu12_nlcd2011_pct_82) + 
+                 s(hu12_nlcd2011_pct_21), 
+               data=rfdat.philt, gamma=1, weights=lwgt)
+gam.check(gam.sinphilt)
+concurvity(gam.sinphilt)
+summary(gam.sinphilt)
+plot(sin(rfdat.philt$accndviphi.ts2), predict(gam.sinphilt, rfdat.philt))
 
 ```
 
-```{r roughGAMplotting, echo=TRUE, cache=FALSE}
+```{r saveResults, echo=TRUE, cache=FALSE}
 
-# plot(gam.cohst, main="coherence, short")
-# plot(gam.cohlt, main="coherence, long")
-# plot(gam.phist, main="cos(phase), short")
-# plot(gam.philt, main="cos(phase), long")
-
+save.image(file="~/Box Sync/NSF EAGER Synchrony/Data/results_20191106.RData")
 ```
 ```{r plot varimp}
 
