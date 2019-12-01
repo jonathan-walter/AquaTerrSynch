@@ -84,7 +84,7 @@ no3Xflow<-bandtest(no3Xflow,b4)
 print(no3Xflow$bandp)
 
 ## trend from 1980:1990
-lmx<-lm(no3[dec.time>=1980&dec.time<1991]~dec.time[dec.time>=1980&dec.time<1991])
+lmx<-lm(no3[dec.time>=1981&dec.time<1990]~dec.time[dec.time>=1981&dec.time<1990])
 summary(lmx)
 ## plotting function--this is modified from the 'wsyn' function by Reuman et al.
 
@@ -134,13 +134,13 @@ plotmag.JW<-function(object,zlims=NULL,neat=TRUE,colorfill=NULL,colorbar=TRUE,ti
   if (!colorbar)
   {
     graphics::image(x=times,y=log2(timescales),z=wav,xlab="",zlim=zlims,
-                    ylab="Timescale",axes=F,col=colorfill(100),main=title,...)
+                    ylab="Timescale (years)",axes=F,col=colorfill(100),main=title,...)
     graphics::axis(1,at = xlocs,labels=xlabs)
     graphics::axis(2,at = log2(ylocs),labels = ylabs)
   }else
   {
     fields::image.plot(x=times,y=log2(timescales),z=wav,xlab="",zlim=zlims,
-                       ylab="Timescale",axes=F,col=colorfill(100),main=title,...)
+                       ylab="Timescale (years)",axes=F,col=colorfill(100),main=title,...)
     graphics::axis(1,at = xlocs,labels=xlabs)
     graphics::axis(2,at = log2(ylocs),labels = ylabs)
   }
@@ -169,11 +169,11 @@ tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/ThinkPiece/dmr_example.tif",
 layout(laymat)
 par(mar=c(2.1,3.5,1.1,1.1),oma=c(2.1,0,0,0),mgp=c(2.2,0.8,0))
 
-plot(no3, type="l", xlab="", ylab=expression("NO"[3]*~(mu*"gL"^-1)), xaxt="n")
-lines((1:length(no3))[dec.time>=1980&dec.time<1991],
-      predict(lmx,data.frame(dec.time[dec.time>=1980&dec.time<1991])),col="red")
+plot(no3, type="l", xlab="", ylab=expression("NO"[3]*~(mu*"gL"^-1)), col="gray40", xaxt="n")
+lines((1:length(no3))[dec.time>=1981&dec.time<1990],
+      predict(lmx,data.frame(dec.time[dec.time>=1981&dec.time<1990])),col="red", lwd=2)
 axis(1,at=seq(0,500,by=60),labels=seq(1976,2016,by=5))
-plot(flow,type="l", xlab="", ylab="Flow (cfs)", xaxt="n")
+plot(flow,type="l", xlab="", ylab="Flow (cfs)", xaxt="n", col="gray40")
 axis(1,at=seq(0,500,by=60),labels=seq(1976,2016,by=5))
 
 plotmag.JW(wt.no3, xaxs="r", colorbar=F, zlim=c(0,8), ylocs=c(0,6,12,24,48,96,192), ylabs=c(0,0.5,1,2,4,8,16),
