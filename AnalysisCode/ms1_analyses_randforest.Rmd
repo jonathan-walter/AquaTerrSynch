@@ -20,10 +20,11 @@ library(lmerTest)
 library(viridis)
 library(fields)
 #library(partykit)
-library(pdp)
+#library(pdp)
 library(party)
 library(spatstat)
 library(caret)
+library(png)
 
 rm(list=ls())
 

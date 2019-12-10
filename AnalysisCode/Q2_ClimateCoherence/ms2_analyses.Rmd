@@ -1,0 +1,89 @@
+---
+title: 'Q2: Does climate drive lake-landscape coherence?'
+author: "Jonathan Walter, Grace Wilkinson, Rachel Fleck, Michael Pace"
+date: "12/9/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(aqts)
+library(wsyn)
+library(rgdal)
+library(rgeos)
+library(LAGOSNE)
+library(raster)
+library(dplyr)
+library(viridis)
+
+rm(list=ls())
+
+```
+
+This document organizes for openness and reproducibility analyses of the influence of climate .
+
+# Data import
+
+In the Q1 manuscript, we output time series from coherent lake-landscape pairs. These are loaded here. We also load time series of three major climate indices (ENSO, PDO, NAO) and local temperature and precipitation.
+
+```{r load and format data, echo=TRUE, cache=FALSE}
+
+#load coherent lakes data
+load("~/Box Sync/NSF EAGER Synchrony/Data/RData files/q2_coherent_lakes.RData")
+#load climate index time series
+mei.raw<-read.csv("/Users/jonathanwalter/Documents/Research/DATA/ClimateIndices/mei_monthly_1979_2019.csv")#MEI
+pdo.raw<-read.csv("/Users/jonathanwalter/Documents/Research/DATA/ClimateIndices/pdo_monthly_1950_2019.csv")#PDO
+nao.raw<-read.csv("/Users/jonathanwalter/Documents/Research/DATA/ClimateIndices/nao_monthly_1950_2019.csv")#NAO
+
+mei.gs<-mei.raw[mei.raw$mm >=5 & mei.raw$mm <=9,]
+pdo.gs<-pdo.raw[pdo.raw$mm >=5 & pdo.raw$mm <=9,]
+nao.gs<-nao.raw[nao.raw$mm >=5 & nao.raw$mm <=9,]
+
+mei.gs<-aggregate(mei.gs$mei,list(mei.gs$yyyy),FUN="mean")
+names(mei.gs)<-c("year","mei")
+pdo.gs<-aggregate(pdo.gs$PDO,list(pdo.gs$yyyy),FUN="mean")
+names(pdo.gs)<-c("year","pdo")
+nao.gs<-aggregate(nao.gs$NAO,list(nao.gs$yyyy),FUN="mean")
+names(nao.gs)<-c("year","nao")
+
+for(ii in 1:length(coherentlakes.st$lakedata)){
+  coherentlakes.st$lakedata[[ii]]<-rbind(coherentlakes.st$lakedata[[ii]],
+                                         mei.gs$mei[mei.gs$year %in% colnames(coherentlakes.st$lakedata[[ii]])],
+                                         pdo.gs$pdo[pdo.gs$year %in% colnames(coherentlakes.st$lakedata[[ii]])],
+                                         nao.gs$nao[nao.gs$year %in% colnames(coherentlakes.st$lakedata[[ii]])])
+  rownames(coherentlakes.st$lakedata[[ii]])<-c("chla","ndvi","mei","pdo","nao")
+}
+
+for(ii in 1:length(coherentlakes.lt$lakedata)){
+  coherentlakes.lt$lakedata[[ii]]<-rbind(coherentlakes.lt$lakedata[[ii]],
+                                         mei.gs$mei[mei.gs$year %in% colnames(coherentlakes.lt$lakedata[[ii]])],
+                                         pdo.gs$pdo[pdo.gs$year %in% colnames(coherentlakes.lt$lakedata[[ii]])],
+                                         nao.gs$nao[nao.gs$year %in% colnames(coherentlakes.lt$lakedata[[ii]])])
+  rownames(coherentlakes.lt$lakedata[[ii]])<-c("chla","ndvi","mei","pdo","nao")
+}
+#add local weather --  write a function to do this.
+
+
+```
+
+# Analyses
+
+a) Are lakes and landscapes coherent with the same climate variables? b) Do climate variables explain a similar amount of variability in coherent lakes as the landscape does? c) does this differ by timescale?
+
+First, do coherences with climate variables
+```{r climate coherence, echo=TRUE, cache=FALSE}
+
+```
+
+Second, find out how much variability in lakes is explained by coherence with the landscape
+```{r wlms lake v landscape, echo=TRUE, cache=FALSE}
+
+```
+
+Third, find out how much variability in lakes is explained by coherence with variables the landscape is coherent with
+```{r wlms lake v climate, echo=TRUE, cache=FALSE}
+
+```
+
+

@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(aqts)
 library(wsyn)
 library(rgdal)
+library(rgeos)
 library(LAGOSNE)
 library(raster)
 library(MuMIn)
@@ -20,7 +21,8 @@ library(lmerTest)
 library(viridis)
 library(fields)
 #library(partykit)
-library(pdp)
+#library(pdp)
+library(png)
 library(party)
 library(spatstat)
 library(caret)
@@ -48,17 +50,12 @@ any(sapply(analysislakes$lakedata, function(x){any(is.na(x))}))
 which(sapply(analysislakes$lakedata, function(x){any(is.na(x))}))
 analysislakes$lakeinfo[which(sapply(analysislakes$lakedata, function(x){any(is.na(x))})),]
 
-# image(accndvi)
-# points(lakepts.prj[which(sapply(analysislakes$lakedata, function(x){any(is.na(x))})),])
-
 dbuff[which(sapply(analysislakes$lakedata, function(x){any(is.na(x))}))]
 
 analysislakes$lakeinfo<-analysislakes$lakeinfo[!sapply(analysislakes$lakedata, function(x){any(is.na(x))}),]
 analysislakes$lakedata<-analysislakes$lakedata[!sapply(analysislakes$lakedata, function(x){any(is.na(x))})]
 
 analysislakes$lakeinfo$tslength<-analysislakes$lakeinfo$end-analysislakes$lakeinfo$start+1
-# analysislakes$lakedata<-analysislakes$lakedata[!analysislakes$lakeinfo$tslength < 20]
-# analysislakes$lakeinfo<-analysislakes$lakeinfo[!analysislakes$lakeinfo$tslength < 20,]
 
 ```
 
@@ -69,36 +66,46 @@ source("~/GitHub/AquaTerrSynch/AnalysisCode/bandtest_coh.R")
 tsranges<-rbind(c(2,4),c(4,Inf),c(2,Inf))
 
 coh.chlaXaccndvi<-NULL
-#coh.chlaXmaxndvi<-NULL
 
 for(lind in 1:length(analysislakes$lakedata)){
   lakedat.ii<-cleandat(analysislakes$lakedata[[lind]], as.numeric(colnames(analysislakes$lakedata[[lind]])), clev=5)$cdat
   chlaXaccndvi<-coh(lakedat.ii[1,], lakedat.ii[2,], as.numeric(colnames(analysislakes$lakedata[[lind]])),
                     norm="powall", sigmethod="fast", nrand=10000)
-#  chlaXmaxndvi<-coh(lakedat.ii[1,], lakedat.ii[3,], as.numeric(colnames(analysislakes$lakedata[[lind]])),
-#                    norm="powall", sigmethod="fast", nrand=10000)
   for(rind in 1:nrow(tsranges)){
     chlaXaccndvi<-bandtest.coh(chlaXaccndvi, tsranges[rind,])
-    #chlaXmaxndvi<-bandtest.coh(chlaXmaxndvi, tsranges[rind,])
   }
   coh.chlaXaccndvi<-rbind(coh.chlaXaccndvi, c(t(as.matrix(chlaXaccndvi$bandp[,3:5]))))
-#  coh.chlaXmaxndvi<-rbind(coh.chlaXmaxndvi, c(t(as.matrix(chlaXmaxndvi$bandp[,3:5]))))
-  
 }
 
 coh.chlaXaccndvi<-as.data.frame(coh.chlaXaccndvi)
-#coh.chlaXmaxndvi<-as.data.frame(coh.chlaXmaxndvi)
 
 colnames(coh.chlaXaccndvi)<-paste0("accndvi",c("p.ts1","phi.ts1","coh.ts1","p.ts2","phi.ts2","coh.ts2","p.ts3","phi.ts3","coh.ts3"))
-#colnames(coh.chlaXmaxndvi)<-paste0("maxndvi",c("p.ts1","phi.ts1","coh.ts1","p.ts2","phi.ts2","coh.ts2","p.ts3","phi.ts3","coh.ts3"))
 
 coh.chlaXaccndvi$lagoslakeid<-analysislakes$lakeinfo$lagoslakeid
-#coh.chlaXmaxndvi$lagoslakeid<-analysislakes$lakeinfo$lagoslakeid
+
+```
+
+```{r export coherent lakes, echo=FALSE, cache=FALSE}
+
+coherentlakes.st<-analysislakes
+coherentlakes.st$lakeinfo<-coherentlakes.st$lakeinfo[coherentlakes.st$lakeinfo$lagoslakeid %in%
+                                                       coh.chlaXaccndvi$lagoslakeid[coh.chlaXaccndvi$accndvip.ts1<0.05],]
+coherentlakes.st$lakedata<-coherentlakes.st$lakedata[names(coherentlakes.st$lakedata) %in%
+                                                       coh.chlaXaccndvi$lagoslakeid[coh.chlaXaccndvi$accndvip.ts1<0.05]]
+
+coherentlakes.lt<-analysislakes
+coherentlakes.lt$lakeinfo<-coherentlakes.lt$lakeinfo[coherentlakes.lt$lakeinfo$lagoslakeid %in%
+                                                       coh.chlaXaccndvi$lagoslakeid[coh.chlaXaccndvi$accndvip.ts2<0.05],]
+coherentlakes.lt$lakedata<-coherentlakes.lt$lakedata[names(coherentlakes.lt$lakedata) %in%
+                                                       coh.chlaXaccndvi$lagoslakeid[coh.chlaXaccndvi$accndvip.ts2<0.05]]
+
+save(list=c("coherentlakes.st","coherentlakes.lt"),
+     file="/Users/jonathanwalter/Box Sync/NSF EAGER Synchrony/Data/RData files/q2_coherent_lakes.RData")
+
 
 ```
 
 ```{r pedagogical example, echo=TRUE, cache=FALSE}
-#looking for especially coherent lakes did not return easy-to-interpret examples. Proceeding with simulated data
 
 tmax=50
 res=0.1
@@ -159,7 +166,6 @@ lines(tt[tt<=20],sig6,lwd=2,col="red")
 mtext(expression(paste(phi," = ",pi)))
 text(1,0.9,"d)",cex=1.2)
 
-
 mtext("Time", 1, outer=T)
 mtext("Signal", 2, outer=T)
 
@@ -169,51 +175,25 @@ dev.off()
 
 ```{r summarize coherences, echo=TRUE, cache=FALSE}
 #short timescales
-hist(coh.chlaXaccndvi$accndvicoh.ts1, main="Accumulated NDVI, short timescales", xlab="Coherence", ylab="Frequency")
-#hist(coh.chlaXmaxndvi$maxndvicoh.ts1, main="Maximum NDVI, short timescales", xlab="Coherence", ylab="Frequency")
-
 quantile(coh.chlaXaccndvi$accndvicoh.ts1)
-#quantile(coh.chlaXmaxndvi$maxndvicoh.ts1)
 
 alpha=0.05
 sum(coh.chlaXaccndvi$accndvip.ts1<alpha)/nrow(coh.chlaXaccndvi)
-#sum(coh.chlaXmaxndvi$maxndvip.ts1<alpha)/nrow(coh.chlaXmaxndvi)
 
 print(cbind(coh.chlaXaccndvi$lagoslakeid, coh.chlaXaccndvi$accndvip.ts1)[coh.chlaXaccndvi$accndvip.ts1<alpha,])
 print(cbind(coh.chlaXaccndvi$lagoslakeid, coh.chlaXaccndvi$accndvip.ts2)[coh.chlaXaccndvi$accndvip.ts2<alpha,])
 
 cor(coh.chlaXaccndvi$accndvicoh.ts1,coh.chlaXaccndvi$accndvicoh.ts2)
 
-# print(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts1<alpha]/pi) #only pattern is that lakes don't lead the landscape
-# print(coh.chlaXmaxndvi$maxndviphi.ts1[coh.chlaXmaxndvi$maxndvip.ts1<alpha]/pi)
-
-phicls<-c(-1,-.75,-0.25,0.25,0.75,1)
-
-# hist(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts1<0.2]/pi, main="Accumulated NDVI, short timescales", xlab="Phase (pi)", ylab="Frequency", breaks=phicls)
-rose(coh.chlaXaccndvi$accndviphi.ts1[coh.chlaXaccndvi$accndvip.ts1<0.3], unit="radian",
-     breaks=seq(0,2*pi,length.out=16))
-#hist(coh.chlaXmaxndvi$maxndviphi.ts1[coh.chlaXmaxndvi$maxndvip.ts1<0.2]/pi, main="Maximum NDVI, short timescales", xlab="Phase (pi)", ylab="Frequency", breaks=5)
-
 #long timescales
-hist(coh.chlaXaccndvi$accndvicoh.ts2, main="Accumulated NDVI, long timescales", xlab="Coherence", ylab="Frequency")
-#hist(coh.chlaXmaxndvi$maxndvicoh.ts2, main="Maximum NDVI, long timescales", xlab="Coherence", ylab="Frequency")
-
 quantile(coh.chlaXaccndvi$accndvicoh.ts2)
-#quantile(coh.chlaXmaxndvi$maxndvicoh.ts2)
 
 alpha=0.05
 sum(coh.chlaXaccndvi$accndvip.ts2<alpha)/nrow(coh.chlaXaccndvi)
-#sum(coh.chlaXmaxndvi$maxndvip.ts2<alpha)/nrow(coh.chlaXmaxndvi)
 
 print(coh.chlaXaccndvi$accndviphi.ts2[coh.chlaXaccndvi$accndvip.ts2<alpha]/pi)
-#print(coh.chlaXmaxndvi$maxndviphi.ts2[coh.chlaXmaxndvi$maxndvip.ts2<alpha]/pi)
 
-# hist(coh.chlaXaccndvi$accndviphi.ts2[coh.chlaXaccndvi$accndvip.ts2<0.2]/pi, main="Accumulated NDVI, long timescales", xlab="Phase (pi)", ylab="Frequency", breaks=phicls)
-rose(coh.chlaXaccndvi$accndviphi.ts2[coh.chlaXaccndvi$accndvip.ts2<0.3], unit="radian",
-     breaks=seq(0,2*pi,length.out=16))
-
-#hist(coh.chlaXmaxndvi$maxndviphi.ts1[coh.chlaXmaxndvi$maxndvicoh.ts2>0.6]/pi, main="Maximum NDVI, short timescales", xlab="Phase (pi)", ylab="Frequency", breaks=5)
-
+#plotting
 tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig2_distributions_20191031.tif", units="in",
      res=300, width=6.5, height=6.5)
 
@@ -240,13 +220,17 @@ dev.off()
 
 ```{r mapping, echo=TRUE, cache=FALSE}
 
-states<-readOGR("~/Box Sync/NSF EAGER Synchrony/Data/statesp020.shp")
+states<-readOGR("~/Box Sync/NSF EAGER Synchrony/Data/statesp020_nolakes.shp")
 getstates<-c("Minnesota", "Iowa", "Wisconsin", "Illinois", "Missouri", "Michigan", "Indiana", "Ohio", "Pennsylvania", "New York", "New Jersey", "Connecticut", "New Hampshire", "Rhode Island", "Massachusetts", "Vermont", "Maine")
 lagosstates<-states[states@data$STATE %in% getstates,]
 
-plot(lagosstates, main="Lakes selected for analysis")
-points(analysislakes$lakeinfo$nhd_long, analysislakes$lakeinfo$nhd_lat, pch=16, cex=1, col="blue")
-
+tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig2_map.tif",units="in",
+     res=300, width=3.25, height=2.75)
+par(mar=rep(0,4))
+plot(lagosstates, main="",bty="o")
+points(analysislakes$lakeinfo$nhd_long, analysislakes$lakeinfo$nhd_lat, pch=21, cex=0.45, col="black",bg="grey")
+legend("bottomright",pch=c(0,21),col="black",pt.bg="grey",legend=c("States in LAGOS-NE","Selected lakes"),inset=c(0.025,0.01),bty="n")
+dev.off()
 
 cohplotdata<-left_join(analysislakes$lakeinfo, coh.chlaXaccndvi, by="lagoslakeid")
 
@@ -263,12 +247,11 @@ plot(lagosstates, main="Lakes by long timescale coherence")
 points(cohplotdata$nhd_long, cohplotdata$nhd_lat, pch=16, cex=1, col=pal[round(cohplotdata$accndvicoh.ts2,2)*100])
 colorbar.plot(x=mean(par("usr")[1:2]),y=par("usr")[3],strip=1:100,col=pal,horizontal = T)
 
-
 laymat=matrix(1,nrow=2,ncol=13)
 laymat[2,]<-2
 laymat[,13]<-3
 
-tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig3_coherencemap.tif", units="in",
+tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/figS1_coherencemap.tif", units="in",
      res=300, width=6.5, height=7.5)
 
 layout(laymat)
@@ -292,7 +275,6 @@ dev.off()
 
 
 ```{r add vars for modelling, echo=TRUE, cache=FALSE}
-
 
 dt<-lagosne_load("1.087.3")
 
@@ -386,11 +368,9 @@ preds<-left_join(preds, cv.accndvi, by="lagoslakeid")
 preds<-left_join(preds, depth, by="lagoslakeid")
 preds<-left_join(preds, shoredev, by="lagoslakeid")
 
-#remove any variables that don't vary in this dataset
-# for(nn in 1:ncol(preds)){
-#   print(colnames(preds)[nn])
-#   print(unique(preds[,nn]))
-# }
+
+conpreds<-preds[,sapply(preds, is.numeric)]
+cor.conpreds<-cor(conpreds,use="pairwise.complete.obs")
 
 preds<-preds[,!colnames(preds) %in% c("hu12_surficialgeology_beach_pct",
                                       "hu12_surficialgeology_colluv_pct",
@@ -400,9 +380,6 @@ preds<-preds[,!colnames(preds) %in% c("hu12_surficialgeology_beach_pct",
                                       "hu12_surficialgeology_till_oth_pct",
                                       "hu12_nlcd2011_pct_0")]
 
-# modvars.conn<-left_join(pred.conn, coh.chlaXaccndvi, by="lagoslakeid")
-# modvars.chag<-left_join(pred.chag, coh.chlaXaccndvi, by="lagoslakeid")
-
 #huc2 and huc4 watershed codes
 huc_codes<-read.csv("~/GitHub/AquaTerrSynch/AnalysisCode/match_huc_codes.csv", colClasses = 'character')
 
@@ -410,12 +387,12 @@ huc_codes<-read.csv("~/GitHub/AquaTerrSynch/AnalysisCode/match_huc_codes.csv", c
 states<-lagosne_select(table="state", vars=c("state_zoneid","state_name"))
 
 for(nn in 1:ncol(preds)){
-  
   if(is.factor(preds[,nn])){
     preds[,nn]<-factor(preds[,nn])
   }
-  
 }
+
+#write.csv(colnames(preds),file="~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/predictorlist.csv")
 
 ```
 
@@ -436,12 +413,7 @@ cf.cohst<-party::cforest(accndvicoh.ts1 ~ ., data=rfdat.cohst, controls=cforest_
 
 varimp.coh.st<-varimp(cf.cohst)
 print(varimp.coh.st[order(varimp.coh.st, decreasing=T)][1:10])
-#hist(predcoh.st)
-#hist(modvars.accndvi$accndvicoh.ts1)
 predcoh.st<-predict(cf.cohst, newdata=rfdat.cohst,type="response")
-# plot(predcoh.st, rfdat.cohst$accndvicoh.ts1, xlab="predicted", ylab="empirical", main="Coherence, short ts",
-#      xlim=c(0,1), ylim=c(0,1))
-# abline(a=0,b=1)
 cor.test(predcoh.st,rfdat.cohst$accndvicoh.ts1)
 
 ```
@@ -451,7 +423,7 @@ lwgt<-preds$tslength/mean(preds$tslength)
 gam.cohst<-gam(accndvicoh.ts1 ~ s(cv.accndvi) + hu8_zoneid + s(hu12_dep_totaln_tavg_mean) +
                s(hu12_nlcd2011_pct_90) + s(hu12_nlcd2011_pct_95), data=rfdat.cohst, gamma=1, weights=lwgt)
 gam.check(gam.cohst)
-concurvity(gam.cohst)
+concurvity(gam.cohst,full=F)$estimate
 summary(gam.cohst)
 plot(rfdat.cohst$accndvicoh.ts1, predict(gam.cohst, rfdat.cohst))
 
@@ -472,12 +444,7 @@ cf.cohlt<-party::cforest(accndvicoh.ts2 ~ ., data=rfdat.cohlt, controls=cforest_
 
 varimp.coh.lt<-varimp(cf.cohlt)
 print(varimp.coh.lt[order(varimp.coh.lt, decreasing=T)][1:10])
-#hist(predcoh.st)
-#hist(modvars.accndvi$accndvicoh.ts1)
 predcoh.lt<-predict(cf.cohlt, newdata=rfdat.cohlt,type="response")
-# plot(predcoh.lt, rfdat.cohlt$accndvicoh.ts2, xlab="predicted", ylab="empirical", main="Coherence, long ts",
-#      xlim=c(0,1), ylim=c(0,1))
-# abline(a=0,b=1)
 cor.test(predcoh.lt,rfdat.cohlt$accndvicoh.ts2)
 
 ```
@@ -485,10 +452,10 @@ cor.test(predcoh.lt,rfdat.cohlt$accndvicoh.ts2)
 lwgt<-preds$tslength/mean(preds$tslength)
 
 gam.cohlt<-gam(accndvicoh.ts2 ~ hu8_zoneid + s(hu12_nlcd2011_pct_52) + s(cv.accndvi) + 
-                 s(wlconnections_forestedwetlands_shoreline_km) + 
-                 s(hu12_prism_ppt_30yr_normal_800mm2_annual_mean), data=rfdat.cohlt, gamma=1, weights=lwgt)
+                 s(hu12_prism_ppt_30yr_normal_800mm2_annual_mean) + 
+                 s(wlconnections_allwetlands_contributing_area_ha), data=rfdat.cohlt, gamma=1, weights=lwgt)
 gam.check(gam.cohlt)
-concurvity(gam.cohlt)
+concurvity(gam.cohlt,full=F)$estimate
 summary(gam.cohlt)
 plot(rfdat.cohlt$accndvicoh.ts2, predict(gam.cohlt, rfdat.cohlt))
 
@@ -508,21 +475,20 @@ for(nn in 1:ncol(rfdat.phist)){
     rfdat.phist[,nn]<-as.factor(rfdat.phist[,nn])
   }
 }
+
 #cosine
 cf.cosphist<-party::cforest(cos(accndviphi.ts1) ~ ., data=rfdat.phist, 
                          controls=cforest_control(ntree=50000,mincriterion = 0.9,mtry=3))
-
-varimp.phi.st<-varimp(cf.cosphist)
-print(varimp.phi.st[order(varimp.phi.st, decreasing=T)][1:10])
+varimp.cosphi.st<-varimp(cf.cosphist)
+print(varimp.cosphi.st[order(varimp.cosphi.st, decreasing=T)][1:10])
 pred.cosphi.st<-predict(cf.cosphist, newdata=rfdat.phist,type="response")
 cor.test(pred.cosphi.st,cos(rfdat.phist$accndviphi.ts1))
 
 #sine
 cf.sinphist<-party::cforest(sin(accndviphi.ts1) ~ ., data=rfdat.phist, 
                          controls=cforest_control(ntree=50000,mincriterion = 0.9,mtry=3))
-
-varimp.phi.st<-varimp(cf.sinphist)
-print(varimp.phi.st[order(varimp.phi.st, decreasing=T)][1:10])
+varimp.sinphi.st<-varimp(cf.sinphist)
+print(varimp.sinphi.st[order(varimp.sinphi.st, decreasing=T)][1:10])
 pred.sinphi.st<-predict(cf.sinphist, newdata=rfdat.phist,type="response")
 cor.test(pred.sinphi.st,sin(rfdat.phist$accndviphi.ts1))
 
@@ -537,17 +503,17 @@ gam.cosphist<-gam(cos(accndviphi.ts1) ~ s(wlconnections_openwaterwetlands_shorel
                  s(chla), 
                data=rfdat.phist, gamma=1, weights=lwgt)
 gam.check(gam.cosphist)
-concurvity(gam.cosphist)
+concurvity(gam.cosphist, full=F)$estimate
 summary(gam.cosphist)
 plot(cos(rfdat.phist$accndviphi.ts1), predict(gam.cosphist, rfdat.phist))
 
-#sine
+#sine -- ignored in main text
 gam.sinphist<-gam(sin(accndviphi.ts1) ~ s(buffer500m_streamdensity_headwaters_density_mperha) + 
-                 s(hu12_dep_so4_tavg_mean ) + 
-                 s(buffer500m_streamdensity_streams_density_mperha), 
+                 s(hu12_dep_so4_tavg_mean) + 
+                 s(hu12_damdensity_pointspersqkm), 
                data=rfdat.phist, gamma=1, weights=lwgt)
 gam.check(gam.sinphist)
-concurvity(gam.sinphist)
+concurvity(gam.sinphist,full=F)$estimate
 summary(gam.sinphist)
 plot(sin(rfdat.phist$accndviphi.ts1), predict(gam.sinphist, rfdat.phist))
 
@@ -575,7 +541,7 @@ cf.cosphilt<-party::cforest(cos(accndviphi.ts2) ~ ., data=rfdat.philt,
 varimp.cosphi.lt<-varimp(cf.cosphilt)
 print(varimp.cosphi.lt[order(varimp.cosphi.lt, decreasing=T)][1:10])
 pred.cosphi.lt<-predict(cf.cosphilt, newdata=rfdat.philt,type="response")
-cor.test(pred.cosphi.lt,cos(rfdat.cosphilt$accndviphi.ts2))
+cor.test(pred.cosphi.lt,cos(rfdat.philt$accndviphi.ts2))
 
 #sine
 cf.sinphilt<-party::cforest(sin(accndviphi.ts2) ~ ., data=rfdat.philt,
@@ -592,29 +558,29 @@ cor.test(pred.sinphi.lt,sin(rfdat.philt$accndviphi.ts2))
 lwgt<-preds$tslength[coh.chlaXaccndvi$accndvip.ts2<0.3]/mean(preds$tslength[coh.chlaXaccndvi$accndvip.ts2<0.3])
 
 #cosine
-gam.cosphilt<-gam(cos(accndviphi.ts2) ~ hu4_zoneid + s(hu12_tri_mean) + 
-                 s(hu12_nlcd2011_pct_41), 
+gam.cosphilt<-gam(cos(accndviphi.ts2) ~ hu4_zoneid + s(hu12_slope_mean) + 
+                 s(hu12_nlcd2011_pct_90), 
                data=rfdat.philt, gamma=1, weights=lwgt)
 gam.check(gam.cosphilt)
-concurvity(gam.cosphilt)
+concurvity(gam.cosphilt,full=F)$estimate
 summary(gam.cosphilt)
-plot(cos(rfdat.cosphilt$accndviphi.ts2), predict(gam.cosphilt, rfdat.philt))
+plot(cos(rfdat.philt$accndviphi.ts2), predict(gam.cosphilt, rfdat.philt))
 
 #sine
 gam.sinphilt<-gam(sin(accndviphi.ts2) ~ hu4_zoneid + s(hu12_nlcd2011_pct_82) + 
                  s(hu12_nlcd2011_pct_21), 
                data=rfdat.philt, gamma=1, weights=lwgt)
 gam.check(gam.sinphilt)
-concurvity(gam.sinphilt)
+concurvity(gam.sinphilt,full=F)$estimate
 summary(gam.sinphilt)
 plot(sin(rfdat.philt$accndviphi.ts2), predict(gam.sinphilt, rfdat.philt))
 
 ```
 
 ```{r saveResults, echo=TRUE, cache=FALSE}
-
-save.image(file="~/Box Sync/NSF EAGER Synchrony/Data/results_20191106.RData")
+# save.image(file="~/Box Sync/NSF EAGER Synchrony/Data/results_20191106.RData")
 ```
+
 ```{r plot varimp}
 
 print(varimp.coh.st[order(varimp.coh.st, decreasing=T)][1:10])
@@ -626,26 +592,29 @@ ltxt.lt<-c("HUC-8 sub-basin","% shrub/scrub","cv(NDVI)","annual precipitation","
            "forested wetlands shoreline","% woody wetlands","all wetlands shoreline","sulfate deposition",
            "groundwater recharge")
 
-print(varimp.phi.st[order(varimp.phi.st, decreasing = T)][1:10])
-ltxt.phist<-c("open wetlands shoreline","headwaters density","mean chlorophyll-a","stream density",
-              "open wetlands contrib. area","% developed open space","nitrate deposition", "road density",
-              "% developed low intensity","all wetlands contrib. area")
+print(varimp.cosphi.st[order(varimp.cosphi.st, decreasing = T)][1:10])
+ltxt.cosphist<-c("open wetlands shoreline","headwaters density","stream density","mean chlorophyll-a",
+              "% developed open space","open wetlands contrib. area","all wetlands contrib. area", "road density","nitrate deposition",
+              "% pasture/hay")
 
-print(varimp.phi.lt[order(varimp.phi.lt, decreasing = T)][1:10])
-ltxt.philt<-c("HUC-4 subregion","HUC-6 basin","slope","topographic roughness","% deciduous forest","% woody wetlands",
-               "headwaters density","total N deposition","HUC-8 sub-basin","stream density")
+print(varimp.sinphi.lt[order(varimp.sinphi.lt, decreasing = T)][1:10])
+ltxt.sinphilt<-c("HUC-4 subregion","HUC-6 basin","% cultivated crops","HUC-8 sub-basin","% developed open space",
+                 "open wetlands contrib. area","all wetlands contrib. area","% open water","all wetlands shoreline","shrub wetladns contrib. area")
+                
 
-tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig4_varimp_top10.tif",units="in",res=300,width=6.5, height=6.5)
+tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig4_varimp_top10.tif",units="in",res=300,width=6.5, height=5)
 
-par(mfrow=c(2,2), mar=c(5,11,1,1), cex.main=0.9, cex.axis=0.9)
+par(mfrow=c(2,2), mar=c(4,11,1,1), cex.main=0.9, cex.axis=0.9)
 
-barplot(rev(varimp.coh.st[order(varimp.coh.st, decreasing=T)][1:10]),names.arg=rev(ltxt.st),las=2,main="Short timescale coher.", horiz=T)
+barplot(rev(varimp.coh.st[order(varimp.coh.st, decreasing=T)][1:10]),names.arg=rev(ltxt.st),las=2,main="a) Short timescale coher.", horiz=T,font.main=1)
 
-barplot(rev(varimp.coh.lt[order(varimp.coh.lt, decreasing=T)][1:10]),names.arg=rev(ltxt.lt),las=2,main="Long timescale coher.", horiz=T)
+barplot(rev(varimp.coh.lt[order(varimp.coh.lt, decreasing=T)][1:10]),names.arg=rev(ltxt.lt),las=2,main="c) Long timescale coher.", horiz=T, font.main=1)
 
-barplot(rev(varimp.phi.st[order(varimp.phi.st, decreasing=T)][1:10]),names.arg=rev(ltxt.phist),las=2,main="Short timescale phase", horiz=T)
+barplot(rev(varimp.cosphi.st[order(varimp.cosphi.st, decreasing=T)][1:10]),names.arg=rev(ltxt.cosphist),las=2,
+        main=expression(paste("b) Short timescale cosine(",phi,")",sep="")), horiz=T)
 
-barplot(rev(varimp.phi.lt[order(varimp.phi.lt, decreasing=T)][1:10]),names.arg=rev(ltxt.philt),las=2,main="Long timescale phase", horiz=T)
+barplot(rev(varimp.sinphi.lt[order(varimp.sinphi.lt, decreasing=T)][1:10]),names.arg=rev(ltxt.sinphilt),las=2,
+        main=expression(paste("d) Long timescale sine(",phi,")",sep="")), horiz=T)
 
 dev.off()
 
@@ -654,40 +623,212 @@ dev.off()
 
 ```{r plot_gameffects}
 
-mar1<-c(3,1.5,0.5,1)
-#mar2<-c(2.5,1.5,1,1)
-fudge=1/40
+## Make geographic variation images 
+huc4_bdys<-readOGR("~/Box Sync/NSF EAGER Synchrony/Data/HU4.shp")
+huc8_bdys<-readOGR("~/Box Sync/NSF EAGER Synchrony/Data/HU8.shp")
 
-tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig5_gamfits.tif",units="in",res=300,width=6.5, height=6.5)
+cohst_huc8<-data.frame(ZoneID=names(gam.cohst$coefficients)[grepl("hu8_zoneid",names(gam.cohst$coefficients))],
+                      coeff=gam.cohst$coefficients[grepl("hu8_zoneid",names(gam.cohst$coefficients))])
+rownames(cohst_huc8)<-c()
+cohst_huc8$ZoneID<-substring(cohst_huc8$ZoneID,11)
 
-par(mfrow=c(4,5),mgp=c(1.5,0.5,0),oma=c(0,2.5,0,0),mar=mar1)
+cohlt_huc8<-data.frame(ZoneID=names(gam.cohlt$coefficients)[grepl("hu8_zoneid",names(gam.cohlt$coefficients))],
+                      coeff=gam.cohlt$coefficients[grepl("hu8_zoneid",names(gam.cohlt$coefficients))])
+rownames(cohlt_huc8)<-c()
+cohlt_huc8$ZoneID<-substring(cohlt_huc8$ZoneID,11)
+
+sinphilt_huc4<-data.frame(ZoneID=names(gam.sinphilt$coefficients)[grepl("hu4_zoneid",names(gam.sinphilt$coefficients))],
+                      coeff=gam.sinphilt$coefficients[grepl("hu4_zoneid",names(gam.sinphilt$coefficients))])
+rownames(sinphilt_huc4)<-c()
+sinphilt_huc4$ZoneID<-substring(sinphilt_huc4$ZoneID,11)
+
+# lagosstates_outline<-lagosstates
+# lagosstates_outline@data$dissolve<-rep(1,length(lagosstates_outline))
+# lagosstates_outline<-gUnaryUnion(lagosstates_outline,id=lagosstates_outline@data$dissolve)
+# huc4_bdys<-raster::intersect(huc4_bdys,lagosstates_outline)
+# huc8_bdys<-raster::intersect(huc8_bdys,lagosstates_outline)
+
+# huc_codes<-read.csv("/Users/jonathanwalter/GitHub/AquaTerrSynch/AnalysisCode/match_huc_codes.csv", colClasses = 'character')
+# huc_codes<-huc_codes[huc_codes$hu4_zoneid %in% analysislakes$lakeinfo$hu4_zoneid,]
+
+huc_bdys_cohst<-huc8_bdys[huc8_bdys$ZoneID %in% cohst_huc8$ZoneID,]
+huc_bdys_cohst@data<-left_join(huc_bdys_cohst@data, cohst_huc8)
+
+huc_bdys_cohlt<-huc8_bdys[huc8_bdys$ZoneID %in% cohlt_huc8$ZoneID,]
+huc_bdys_cohlt@data<-left_join(huc_bdys_cohlt@data, cohlt_huc8)
+
+huc_bdys_sinphilt<-huc4_bdys[huc4_bdys$ZoneID %in% sinphilt_huc4$ZoneID,]
+huc_bdys_sinphilt@data<-left_join(huc_bdys_sinphilt@data, sinphilt_huc4)
+
+scale1_100<-function(x){
+  x1<-x-min(x)+1/100
+  x1<-round(x1/max(x1)*100)
+  return(x1)
+}
+#make smaller images that we can insert into the main figure
+
+bight=6.5
+bigwd=6.5
+
+lagosstates_prj<-spTransform(lagosstates, proj4string(huc8_bdys))
+
+# png("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig5b_hu8_cohst.png", units="in",
+#      res=300, width=bigwd/5, height=bight/4)
+# par(mar=c(0,0,2,0))
+# plot(huc_bdys_cohst,bty="o",xlab="HU8 watershed", col=pal[scale1_100(huc_bdys_cohst$coeff)],xlim=c(-91837,2260000),lwd=0.5)
+# lines(lagosstates_prj,lwd=0.5)
+# par(fig=c(0.2,0.8,0.875,1), new=T,mar=c(.5,0,0.2,0), tcl=-0.15, mgp=c(1,0.2,0))
+# image(matrix(1:100,ncol=1),col=pal[1:100], xaxt="n", yaxt="n")
+# axis(1,at=c(0,0.25,0.5,0.75,1),labels=round(seq(min(huc_bdys_cohst$coeff), max(huc_bdys_cohst$coeff), length.out=5),2), cex=0.5)
+# dev.off()
+# 
+# png("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig5i_hu8_cohlt.png", units="in",
+#      res=300, width=bigwd/5, height=bight/4)
+# par(mar=c(0,0,2,0))
+# plot(huc_bdys_cohlt,bty="o",xlab="HU8 watershed", col=pal[scale1_100(huc_bdys_cohlt$coeff)],xlim=c(-91837,2260000),lwd=0.5)
+# lines(lagosstates_prj,lwd=0.5)
+# par(fig=c(0.2,0.8,0.875,1), new=T,mar=c(.5,0,0.2,0), tcl=-0.15, mgp=c(1,0.2,0))
+# image(matrix(1:100,ncol=1),col=pal[1:100], xaxt="n", yaxt="n")
+# axis(1,at=c(0,0.25,0.5,0.75,1),labels=round(seq(min(huc_bdys_cohlt$coeff), max(huc_bdys_cohlt$coeff), length.out=5),2), cex=0.5)
+# dev.off()
+# 
+# png("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig5n_hu4_sinphilt.png", units="in",
+#      res=300, width=bigwd/5, height=bight/4)
+# par(mar=c(0,0,2,0))
+# plot(huc_bdys_sinphilt,bty="o",xlab="HU4 watershed", col=pal[scale1_100(huc_bdys_sinphilt$coeff)],xlim=c(-91837,2260000),lwd=0.5)
+# lines(lagosstates_prj,lwd=0.5)
+# par(fig=c(0.2,0.8,0.875,1), new=T,mar=c(.5,0,0.2,0), tcl=-0.15, mgp=c(1,0.2,0))
+# image(matrix(1:100,ncol=1),col=pal[1:100], xaxt="n", yaxt="n")
+# axis(1,at=c(0,0.25,0.5,0.75,1),labels=round(seq(min(huc_bdys_sinphilt$coeff), max(huc_bdys_sinphilt$coeff), length.out=5),2), cex=0.5)
+# dev.off()
+# 
+# 
+# panel5b<-readPNG("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig5b_hu8_cohst.png")
+# panel5i<-readPNG("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig5i_hu8_cohlt.png")
+# panel5n<-readPNG("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig5n_hu4_sinphilt.png")
+# 
+# mar1<-c(3,1.5,0.5,1)
+# fudge=1/40
+# 
+# tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig5_gamfits.tif",units="in",res=300,width=bigwd, height=bight)
+# 
+# par(mfrow=c(4,5),mgp=c(1.5,0.5,0),oma=c(0,2.5,0,0),mar=mar1)
+# 
+# plot(gam.cohst,select=1,residuals=T,rug=FALSE,shade=T,cex=2,xlab="cv(NDVI)",ylab="short coherence")
+# plot(NA,NA,xlim=c(0,1),ylim=c(0,1),xaxs="i",yaxs="i",ylab="",xlab="HUC-8 sub-basin",xaxt="n",yaxt="n",mgp=c(1,0.5,0))
+# rasterImage(image=panel5b,xleft=1e-2,ybottom=1e-2,xright=1-1e-2,ytop=1-1e-2)
+# plot(gam.cohst,select=2,residuals=T,rug=FALSE,shade=T,cex=2,xlab="total N deposition",ylab="")
+# plot(gam.cohst,select=3,residuals=T,rug=FALSE,shade=T,cex=2,xlab="% woody wetlands",ylab="")
+# plot(gam.cohst,select=4,residuals=T,rug=FALSE,shade=T,cex=2,xlab="% herbaceous wetld.",ylab="")
+# 
+# plot(gam.cosphist,select=1,residuals=T,rug=FALSE,shade=T,cex=2,xlab="open wetlands shoreline",ylab="short phase")
+# plot(gam.cosphist,select=2,residuals=T,rug=FALSE,shade=T,cex=2,xlab="headwaters density",ylab="")
+# plot(gam.cosphist,select=3,residuals=T,rug=FALSE,shade=T,cex=2,xlab="mean chlorophyll-a",ylab="")
+# plot.new()
+# plot.new()
+# 
+# plot(NA,NA,xlim=c(0,1),ylim=c(0,1),xaxs="i",yaxs="i",ylab="",xlab="HUC-8 sub-basin",xaxt="n",yaxt="n",mgp=c(1,0.5,0))
+# rasterImage(image=panel5i,xleft=1e-2,ybottom=1e-2,xright=1-1e-2,ytop=1-1e-2)
+# plot(gam.cohlt,select=1,residuals=T,rug=FALSE,shade=T,cex=2,xlab="% shrub/scrub",ylab="long coherence",ylim=c(-1,1))
+# plot(gam.cohlt,select=2,residuals=T,rug=FALSE,shade=T,cex=2,xlab="cv(NDVI)",ylab="",ylim=c(-1,1))
+# plot(gam.cohlt,select=3,residuals=T,rug=FALSE,shade=T,cex=2,xlab="annual precipitation",ylab="")
+# plot(gam.cohlt,select=4,residuals=T,rug=FALSE,shade=T,cex=2,xlab="all wetld. contrib. area",ylab="",ylim=c(-1,1))
+# 
+# plot(NA,NA,xlim=c(0,1),ylim=c(0,1),xaxs="i",yaxs="i",ylab="",xlab="HUC-4 sub-region",xaxt="n",yaxt="n",mgp=c(1,0.5,0))
+# rasterImage(image=panel5n,xleft=1e-2,ybottom=1e-2,xright=1-1e-2,ytop=1-1e-2)
+# plot(gam.sinphilt,select=1,residuals=T,rug=FALSE,shade=T,cex=2,xlab="% pasture",ylab="")
+# plot(gam.sinphilt,select=2,residuals=T,rug=FALSE,shade=T,cex=2,xlab="% developed-open space",ylab="")
+# 
+# mtext("Partial residuals",2,outer=T,line=1.2,cex=0.8)
+# mtext("sin(long phase)",2,at=1/8+fudge,outer=T,line=0,cex=0.7)
+# mtext("long coherence",2,at=1/8+1/4+fudge,outer=T,line=0,cex=0.7)
+# mtext("cos(short phase)",2,at=1/8+2/4+fudge,outer=T,line=0,cex=0.7)
+# mtext("short coherence",2,at=1/8+3/4+fudge,outer=T,line=0,cex=0.7)
+# 
+# dev.off()
+
+
+## try out landscape orientation
+
+bight=5.5
+bigwd=9
+
+lagosstates_prj<-spTransform(lagosstates, proj4string(huc8_bdys))
+
+png("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig5b_hu8_cohst_lscp.png", units="in",
+     res=300, width=bigwd/5, height=bight/4)
+par(mar=c(0,0,1,0))
+plot(huc_bdys_cohst,bty="o",xlab="HU8 watershed", col=pal[scale1_100(huc_bdys_cohst$coeff)],xlim=c(-91837,2260000),
+     ylim=c(1454000,3012981),lwd=0.5)
+lines(lagosstates_prj,lwd=0.5)
+par(fig=c(0.25,0.75,0.855,1), new=T,mar=c(.5,0,0.2,0), tcl=-0.15, mgp=c(1,0.05,0))
+image(matrix(1:100,ncol=1),col=pal[1:100], xaxt="n", yaxt="n")
+axis(1,at=c(0,0.25,0.5,0.75,1),labels=round(seq(min(huc_bdys_cohst$coeff), max(huc_bdys_cohst$coeff), length.out=5),2), cex.axis=0.7)
+dev.off()
+
+png("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig5i_hu8_cohlt_lscp.png", units="in",
+     res=300, width=bigwd/5, height=bight/4)
+par(mar=c(0,0,1,0))
+plot(huc_bdys_cohlt,bty="o",xlab="HU8 watershed", col=pal[scale1_100(huc_bdys_cohlt$coeff)],xlim=c(-91837,2260000),
+     ylim=c(1454000,3012981),lwd=0.5)
+lines(lagosstates_prj,lwd=0.5)
+par(fig=c(0.25,0.75,0.855,1), new=T,mar=c(.5,0,0.2,0), tcl=-0.15, mgp=c(1,0.05,0))
+image(matrix(1:100,ncol=1),col=pal[1:100], xaxt="n", yaxt="n")
+axis(1,at=c(0,0.25,0.5,0.75,1),labels=round(seq(min(huc_bdys_cohlt$coeff), max(huc_bdys_cohlt$coeff), length.out=5),2), cex.axis=0.7)
+dev.off()
+
+png("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig5n_hu4_sinphilt_lscp.png", units="in",
+     res=300, width=bigwd/5, height=bight/4)
+par(mar=c(0,0,1,0))
+plot(huc_bdys_sinphilt,bty="o",xlab="HU4 watershed", col=pal[scale1_100(huc_bdys_sinphilt$coeff)],xlim=c(-91837,2260000),
+     ylim=c(1454000,3012981),lwd=0.5)
+lines(lagosstates_prj,lwd=0.5)
+par(fig=c(0.25,0.75,0.855,1), new=T,mar=c(.5,0,0.2,0), tcl=-0.15, mgp=c(1,0.2,0))
+image(matrix(1:100,ncol=1),col=pal[1:100], xaxt="n", yaxt="n")
+axis(1,at=c(0,0.25,0.5,0.75,1),labels=round(seq(min(huc_bdys_sinphilt$coeff), max(huc_bdys_sinphilt$coeff), length.out=5),2), cex.axis=0.7)
+dev.off()
+
+
+panel5b<-readPNG("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig5b_hu8_cohst_lscp.png")
+panel5i<-readPNG("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig5i_hu8_cohlt_lscp.png")
+panel5n<-readPNG("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig5n_hu4_sinphilt_lscp.png")
+
+mar1<-c(3,1.5,0.5,0.2)
+fudge=1/34
+
+tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/1_CoherenceSpatialVariation/fig5_gamfits_landscape.tif",units="in",res=300,width=bigwd, height=bight)
+
+par(mfrow=c(4,5),mgp=c(1.5,0.5,0), oma=c(0,2.5,0,0.5),mar=mar1,tcl=-0.3)
 
 plot(gam.cohst,select=1,residuals=T,rug=FALSE,shade=T,cex=2,xlab="cv(NDVI)",ylab="short coherence")
-plot(NA,NA,xlab="HUC-8 sub-basin",xlim=c(0,1),ylim=c(0,1))
+plot(NA,NA,xlim=c(0,1),ylim=c(0,1),xaxs="i",yaxs="i",ylab="",xlab="HUC-8 sub-basin",xaxt="n",yaxt="n",mgp=c(1,0.5,0))
+rasterImage(image=panel5b,xleft=1e-2,ybottom=1e-2,xright=1-1e-2,ytop=1-1e-2)
 plot(gam.cohst,select=2,residuals=T,rug=FALSE,shade=T,cex=2,xlab="total N deposition",ylab="")
 plot(gam.cohst,select=3,residuals=T,rug=FALSE,shade=T,cex=2,xlab="% woody wetlands",ylab="")
 plot(gam.cohst,select=4,residuals=T,rug=FALSE,shade=T,cex=2,xlab="% herbaceous wetld.",ylab="")
 
-plot(gam.phist,select=1,residuals=T,rug=FALSE,shade=T,cex=2,xlab="open wetlands shoreline",ylab="short phase")
-plot(gam.phist,select=2,residuals=T,rug=FALSE,shade=T,cex=2,xlab="headwaters density",ylab="")
-plot(gam.phist,select=3,residuals=T,rug=FALSE,shade=T,cex=2,xlab="mean chlorophyll-a",ylab="")
+plot(gam.cosphist,select=1,residuals=T,rug=FALSE,shade=T,cex=2,xlab="open wetlands shoreline",ylab="short phase")
+plot(gam.cosphist,select=2,residuals=T,rug=FALSE,shade=T,cex=2,xlab="headwaters density",ylab="")
+plot(gam.cosphist,select=3,residuals=T,rug=FALSE,shade=T,cex=2,xlab="mean chlorophyll-a",ylab="")
 plot.new()
 plot.new()
 
-plot(NA,NA,xlab="HUC-8 sub-basin",xlim=c(0,1),ylim=c(0,1))
+plot(NA,NA,xlim=c(0,1),ylim=c(0,1),xaxs="i",yaxs="i",ylab="",xlab="HUC-8 sub-basin",xaxt="n",yaxt="n",mgp=c(1,0.5,0))
+rasterImage(image=panel5i,xleft=1e-2,ybottom=1e-2,xright=1-1e-2,ytop=1-1e-2)
 plot(gam.cohlt,select=1,residuals=T,rug=FALSE,shade=T,cex=2,xlab="% shrub/scrub",ylab="long coherence",ylim=c(-1,1))
 plot(gam.cohlt,select=2,residuals=T,rug=FALSE,shade=T,cex=2,xlab="cv(NDVI)",ylab="",ylim=c(-1,1))
 plot(gam.cohlt,select=3,residuals=T,rug=FALSE,shade=T,cex=2,xlab="annual precipitation",ylab="")
 plot(gam.cohlt,select=4,residuals=T,rug=FALSE,shade=T,cex=2,xlab="all wetld. contrib. area",ylab="",ylim=c(-1,1))
 
-plot(NA,NA,xlab="HUC-4 subregion",xlim=c(0,1),ylim=c(0,1),ylab="long phase")
-plot(gam.philt,select=1,residuals=T,rug=FALSE,shade=T,cex=2,xlab="slope",ylab="")
-plot(gam.philt,select=2,residuals=T,rug=FALSE,shade=T,cex=2,xlab="% deciduous forest",ylab="")
+plot(NA,NA,xlim=c(0,1),ylim=c(0,1),xaxs="i",yaxs="i",ylab="",xlab="HUC-4 sub-region",xaxt="n",yaxt="n",mgp=c(1,0.5,0))
+rasterImage(image=panel5n,xleft=1e-2,ybottom=1e-2,xright=1-1e-2,ytop=1-1e-2)
+plot(gam.sinphilt,select=1,residuals=T,rug=FALSE,shade=T,cex=2,xlab="% pasture",ylab="")
+plot(gam.sinphilt,select=2,residuals=T,rug=FALSE,shade=T,cex=2,xlab="% developed-open space",ylab="")
 
 mtext("Partial residuals",2,outer=T,line=1.2,cex=0.8)
-mtext("cos(long phase)",2,at=1/8+fudge,outer=T,line=0,cex=0.7)
-mtext("long coherence)",2,at=1/8+1/4+fudge,outer=T,line=0,cex=0.7)
-mtext("cos(short phase)",2,at=1/8+2/4+fudge,outer=T,line=0,cex=0.7)
+mtext(expression(paste("long sin(",phi,")",sep="")),2,at=1/8+fudge,outer=T,line=0,cex=0.7)
+mtext("long coherence",2,at=1/8+1/4+fudge,outer=T,line=0,cex=0.7)
+mtext(expression(paste("short cos(",phi,")",sep="")),2,at=1/8+2/4+fudge,outer=T,line=0,cex=0.7)
 mtext("short coherence",2,at=1/8+3/4+fudge,outer=T,line=0,cex=0.7)
 
 dev.off()
