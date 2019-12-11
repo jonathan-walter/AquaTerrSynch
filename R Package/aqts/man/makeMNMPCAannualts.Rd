@@ -4,9 +4,16 @@
 \alias{makeMNMPCAannualts}
 \title{Create annualized time series from MN MPCA data}
 \usage{
-makeMNMPCAannualts(dir, tsvars = "Chlorophyll a, corrected for pheophytin",
-  infovars = NULL, aggfun = "gsmean", timespan = NULL, minmos = 3,
-  minobs = 3, lagosversion = "1.087.1")
+makeMNMPCAannualts(
+  dir,
+  tsvars = "Chlorophyll a, corrected for pheophytin",
+  infovars = NULL,
+  aggfun = "gsmean",
+  timespan = NULL,
+  minmos = 3,
+  minobs = 3,
+  lagosversion = "1.087.1"
+)
 }
 \arguments{
 \item{dir}{a file path where the data files are stored}

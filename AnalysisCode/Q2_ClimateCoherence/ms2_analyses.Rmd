@@ -19,6 +19,8 @@ library(viridis)
 
 rm(list=ls())
 
+source("/Users/jonathanwalter/GitHub/AquaTerrSynch/AnalysisCode/Q2_ClimateCoherence/bandtest_coh.R")
+
 ```
 
 This document organizes for openness and reproducibility analyses of the influence of climate .
@@ -27,7 +29,7 @@ This document organizes for openness and reproducibility analyses of the influen
 
 In the Q1 manuscript, we output time series from coherent lake-landscape pairs. These are loaded here. We also load time series of three major climate indices (ENSO, PDO, NAO) and local temperature and precipitation.
 
-```{r load and format data, echo=TRUE, cache=FALSE}
+```{r load and format data, echo=TRUE, cache=TRUE}
 
 #load coherent lakes data
 load("~/Box Sync/NSF EAGER Synchrony/Data/RData files/q2_coherent_lakes.RData")
@@ -62,9 +64,29 @@ for(ii in 1:length(coherentlakes.lt$lakedata)){
                                          nao.gs$nao[nao.gs$year %in% colnames(coherentlakes.lt$lakedata[[ii]])])
   rownames(coherentlakes.lt$lakedata[[ii]])<-c("chla","ndvi","mei","pdo","nao")
 }
-#add local weather --  write a function to do this.
+
+#add local weather
+ppt.files<-paste0("/Users/jonathanwalter/Documents/Research/DATA/PRISM_4km2_gridded/ppt/PRISM_ppt_stable_4kmM3_",
+                  rep(1989:2018,each=5),
+                  rep(c("05","06","07","08","09"),times=30),
+                  "_bil.bil")
+ppt<-stack(ppt.files)
 
 
+tavg.files<-c(paste0("/Users/jonathanwalter/Documents/Research/DATA/PRISM_4km2_gridded/tmean/PRISM_tmean_stable_4kmM2_",
+                  rep(1989:2016,each=5),
+                  rep(c("05","06","07","08","09"),times=28),
+                  "_bil.bil"),
+              paste0("/Users/jonathanwalter/Documents/Research/DATA/PRISM_4km2_gridded/tmean/PRISM_tmean_stable_4kmM3_",
+                  rep(2017:2018,each=5),
+                  rep(c("05","06","07","08","09"),times=2),
+                  "_bil.bil"))
+tavg<-stack(tavg.files)
+
+coherentlakes.st<-addPRISMts(coherentlakes.st, ppt, var="ppt")
+coherentlakes.st<-addPRISMts(coherentlakes.st, tavg, var="tmean")
+coherentlakes.lt<-addPRISMts(coherentlakes.lt, ppt, var="ppt")
+coherentlakes.lt<-addPRISMts(coherentlakes.lt, tavg, var="tmean")
 ```
 
 # Analyses
@@ -73,11 +95,221 @@ a) Are lakes and landscapes coherent with the same climate variables? b) Do clim
 
 First, do coherences with climate variables
 ```{r climate coherence, echo=TRUE, cache=FALSE}
+lakeXclim.st<-data.frame(lagoslakeid=names(coherentlakes.st$lakedata),
+                         mei.coh=rep(NA, length(coherentlakes.st$lakedata)),
+                         mei.p=rep(NA, length(coherentlakes.st$lakedata)),
+                         mei.phi=rep(NA, length(coherentlakes.st$lakedata)),
+                         nao.coh=rep(NA, length(coherentlakes.st$lakedata)),
+                         nao.p=rep(NA, length(coherentlakes.st$lakedata)),
+                         nao.phi=rep(NA, length(coherentlakes.st$lakedata)),
+                         pdo.coh=rep(NA, length(coherentlakes.st$lakedata)),
+                         pdo.p=rep(NA, length(coherentlakes.st$lakedata)),
+                         pdo.phi=rep(NA, length(coherentlakes.st$lakedata)),
+                         ppt.coh=rep(NA, length(coherentlakes.st$lakedata)),
+                         ppt.p=rep(NA, length(coherentlakes.st$lakedata)),
+                         ppt.phi=rep(NA, length(coherentlakes.st$lakedata)),
+                         tavg.coh=rep(NA, length(coherentlakes.st$lakedata)),
+                         tavg.p=rep(NA, length(coherentlakes.st$lakedata)),
+                         tavg.phi=rep(NA, length(coherentlakes.st$lakedata)))
+landXclim.st<-lakeXclim.st
+
+lakeXclim.lt<-data.frame(lagoslakeid=names(coherentlakes.lt$lakedata),
+                         mei.coh=rep(NA, length(coherentlakes.lt$lakedata)),
+                         mei.p=rep(NA, length(coherentlakes.lt$lakedata)),
+                         mei.phi=rep(NA, length(coherentlakes.lt$lakedata)),
+                         nao.coh=rep(NA, length(coherentlakes.lt$lakedata)),
+                         nao.p=rep(NA, length(coherentlakes.lt$lakedata)),
+                         nao.phi=rep(NA, length(coherentlakes.lt$lakedata)),
+                         pdo.coh=rep(NA, length(coherentlakes.lt$lakedata)),
+                         pdo.p=rep(NA, length(coherentlakes.lt$lakedata)),
+                         pdo.phi=rep(NA, length(coherentlakes.lt$lakedata)),
+                         ppt.coh=rep(NA, length(coherentlakes.lt$lakedata)),
+                         ppt.p=rep(NA, length(coherentlakes.lt$lakedata)),
+                         ppt.phi=rep(NA, length(coherentlakes.lt$lakedata)),
+                         tavg.coh=rep(NA, length(coherentlakes.lt$lakedata)),
+                         tavg.p=rep(NA, length(coherentlakes.lt$lakedata)),
+                         tavg.phi=rep(NA, length(coherentlakes.lt$lakedata)))
+landXclim.lt<-lakeXclim.lt
+
+# lakes, short timescales
+NN=length(coherentlakes.st$lakedata)
+ts=c(2,4)
+for(ii in 1:NN){
+  vars<-rownames(coherentlakes.st$lakedata[[ii]])
+  yy<-as.numeric(colnames(coherentlakes.st$lakedata[[ii]]))
+  clnd<-cleandat(coherentlakes.st$lakedata[[ii]],yy,clev=5)$cdat
+
+  cohXmei<-coh(clnd[vars=="chla",], clnd[vars=="mei"], yy, norm="powall", sigmethod="fast")
+  cohXnao<-coh(clnd[vars=="chla",], clnd[vars=="nao"], yy, norm="powall", sigmethod="fast")
+  cohXpdo<-coh(clnd[vars=="chla",], clnd[vars=="pdo"], yy, norm="powall", sigmethod="fast")
+  cohXppt<-coh(clnd[vars=="chla",], clnd[vars=="ppt"], yy, norm="powall", sigmethod="fast")
+  cohXtavg<-coh(clnd[vars=="chla",], clnd[vars=="tavg"], yy, norm="powall", sigmethod="fast")
+  
+  cohXmei<-bandtest.coh(cohXmei,ts)
+  cohXnao<-bandtest.coh(cohXnao,ts)
+  cohXpdo<-bandtest.coh(cohXpdo,ts)
+  cohXppt<-bandtest.coh(cohXppt,ts)
+  cohXtavg<-bandtest.coh(cohXtavg,ts)
+  
+  lakeXclim.st$mei.coh[ii]<-cohXmei$bandp$mn_coh
+  lakeXclim.st$mei.p[ii]<-cohXmei$bandp$p_val
+  lakeXclim.st$mei.phi[ii]<-cohXmei$bandp$mn_phs
+  lakeXclim.st$nao.coh[ii]<-cohXnao$bandp$mn_coh
+  lakeXclim.st$nao.p[ii]<-cohXnao$bandp$p_val
+  lakeXclim.st$nao.phi[ii]<-cohXnao$bandp$mn_phs
+  lakeXclim.st$pdo.coh[ii]<-cohXpdo$bandp$mn_coh
+  lakeXclim.st$pdo.p[ii]<-cohXpdo$bandp$p_val
+  lakeXclim.st$pdo.phi[ii]<-cohXpdo$bandp$mn_phs
+  lakeXclim.st$ppt.coh[ii]<-cohXppt$bandp$mn_coh
+  lakeXclim.st$ppt.p[ii]<-cohXppt$bandp$p_val
+  lakeXclim.st$ppt.phi[ii]<-cohXppt$bandp$mn_phs
+  lakeXclim.st$tavg.coh[ii]<-cohXtavg$bandp$mn_coh
+  lakeXclim.st$tavg.p[ii]<-cohXtavg$bandp$p_val
+  lakeXclim.st$tavg.phi[ii]<-cohXtavg$bandp$mn_phs
+}
+
+#land, short timescales
+NN=length(coherentlakes.st$lakedata)
+ts=c(2,4)
+for(ii in 1:NN){
+  vars<-rownames(coherentlakes.st$lakedata[[ii]])
+  yy<-as.numeric(colnames(coherentlakes.st$lakedata[[ii]]))
+  clnd<-cleandat(coherentlakes.st$lakedata[[ii]],yy,clev=5)$cdat
+
+  cohXmei<-coh(clnd[vars=="ndvi",], clnd[vars=="mei"], yy, norm="powall", sigmethod="fast")
+  cohXnao<-coh(clnd[vars=="ndvi",], clnd[vars=="nao"], yy, norm="powall", sigmethod="fast")
+  cohXpdo<-coh(clnd[vars=="ndvi",], clnd[vars=="pdo"], yy, norm="powall", sigmethod="fast")
+  cohXppt<-coh(clnd[vars=="ndvi",], clnd[vars=="ppt"], yy, norm="powall", sigmethod="fast")
+  cohXtavg<-coh(clnd[vars=="ndvi",], clnd[vars=="tavg"], yy, norm="powall", sigmethod="fast")
+  
+  cohXmei<-bandtest.coh(cohXmei,ts)
+  cohXnao<-bandtest.coh(cohXnao,ts)
+  cohXpdo<-bandtest.coh(cohXpdo,ts)
+  cohXppt<-bandtest.coh(cohXppt,ts)
+  cohXtavg<-bandtest.coh(cohXtavg,ts)
+  
+  landXclim.st$mei.coh[ii]<-cohXmei$bandp$mn_coh
+  landXclim.st$mei.p[ii]<-cohXmei$bandp$p_val
+  landXclim.st$mei.phi[ii]<-cohXmei$bandp$mn_phs
+  landXclim.st$nao.coh[ii]<-cohXnao$bandp$mn_coh
+  landXclim.st$nao.p[ii]<-cohXnao$bandp$p_val
+  landXclim.st$nao.phi[ii]<-cohXnao$bandp$mn_phs
+  landXclim.st$pdo.coh[ii]<-cohXpdo$bandp$mn_coh
+  landXclim.st$pdo.p[ii]<-cohXpdo$bandp$p_val
+  landXclim.st$pdo.phi[ii]<-cohXpdo$bandp$mn_phs
+  landXclim.st$ppt.coh[ii]<-cohXppt$bandp$mn_coh
+  landXclim.st$ppt.p[ii]<-cohXppt$bandp$p_val
+  landXclim.st$ppt.phi[ii]<-cohXppt$bandp$mn_phs
+  landXclim.st$tavg.coh[ii]<-cohXtavg$bandp$mn_coh
+  landXclim.st$tavg.p[ii]<-cohXtavg$bandp$p_val
+  landXclim.st$tavg.phi[ii]<-cohXtavg$bandp$mn_phs
+}
+
+#lakes, long timescales
+NN=length(coherentlakes.lt$lakedata)
+ts=c(4,Inf)
+for(ii in 1:NN){
+  vars<-rownames(coherentlakes.lt$lakedata[[ii]])
+  yy<-as.numeric(colnames(coherentlakes.lt$lakedata[[ii]]))
+  clnd<-cleandat(coherentlakes.lt$lakedata[[ii]],yy,clev=5)$cdat
+
+  cohXmei<-coh(clnd[vars=="chla",], clnd[vars=="mei"], yy, norm="powall", sigmethod="fast")
+  cohXnao<-coh(clnd[vars=="chla",], clnd[vars=="nao"], yy, norm="powall", sigmethod="fast")
+  cohXpdo<-coh(clnd[vars=="chla",], clnd[vars=="pdo"], yy, norm="powall", sigmethod="fast")
+  cohXppt<-coh(clnd[vars=="chla",], clnd[vars=="ppt"], yy, norm="powall", sigmethod="fast")
+  cohXtavg<-coh(clnd[vars=="chla",], clnd[vars=="tavg"], yy, norm="powall", sigmethod="fast")
+  
+  cohXmei<-bandtest.coh(cohXmei,ts)
+  cohXnao<-bandtest.coh(cohXnao,ts)
+  cohXpdo<-bandtest.coh(cohXpdo,ts)
+  cohXppt<-bandtest.coh(cohXppt,ts)
+  cohXtavg<-bandtest.coh(cohXtavg,ts)
+  
+  lakeXclim.lt$mei.coh[ii]<-cohXmei$bandp$mn_coh
+  lakeXclim.lt$mei.p[ii]<-cohXmei$bandp$p_val
+  lakeXclim.lt$mei.phi[ii]<-cohXmei$bandp$mn_phs
+  lakeXclim.lt$nao.coh[ii]<-cohXnao$bandp$mn_coh
+  lakeXclim.lt$nao.p[ii]<-cohXnao$bandp$p_val
+  lakeXclim.lt$nao.phi[ii]<-cohXnao$bandp$mn_phs
+  lakeXclim.lt$pdo.coh[ii]<-cohXpdo$bandp$mn_coh
+  lakeXclim.lt$pdo.p[ii]<-cohXpdo$bandp$p_val
+  lakeXclim.lt$pdo.phi[ii]<-cohXpdo$bandp$mn_phs
+  lakeXclim.lt$ppt.coh[ii]<-cohXppt$bandp$mn_coh
+  lakeXclim.lt$ppt.p[ii]<-cohXppt$bandp$p_val
+  lakeXclim.lt$ppt.phi[ii]<-cohXppt$bandp$mn_phs
+  lakeXclim.lt$tavg.coh[ii]<-cohXtavg$bandp$mn_coh
+  lakeXclim.lt$tavg.p[ii]<-cohXtavg$bandp$p_val
+  lakeXclim.lt$tavg.phi[ii]<-cohXtavg$bandp$mn_phs
+}
+
+#land, long timescales
+NN=length(coherentlakes.lt$lakedata)
+ts=c(4,Inf)
+for(ii in 1:NN){
+  vars<-rownames(coherentlakes.lt$lakedata[[ii]])
+  yy<-as.numeric(colnames(coherentlakes.lt$lakedata[[ii]]))
+  clnd<-cleandat(coherentlakes.lt$lakedata[[ii]],yy,clev=5)$cdat
+
+  cohXmei<-coh(clnd[vars=="ndvi",], clnd[vars=="mei"], yy, norm="powall", sigmethod="fast")
+  cohXnao<-coh(clnd[vars=="ndvi",], clnd[vars=="nao"], yy, norm="powall", sigmethod="fast")
+  cohXpdo<-coh(clnd[vars=="ndvi",], clnd[vars=="pdo"], yy, norm="powall", sigmethod="fast")
+  cohXppt<-coh(clnd[vars=="ndvi",], clnd[vars=="ppt"], yy, norm="powall", sigmethod="fast")
+  cohXtavg<-coh(clnd[vars=="ndvi",], clnd[vars=="tavg"], yy, norm="powall", sigmethod="fast")
+  
+  cohXmei<-bandtest.coh(cohXmei,ts)
+  cohXnao<-bandtest.coh(cohXnao,ts)
+  cohXpdo<-bandtest.coh(cohXpdo,ts)
+  cohXppt<-bandtest.coh(cohXppt,ts)
+  cohXtavg<-bandtest.coh(cohXtavg,ts)
+  
+  landXclim.lt$mei.coh[ii]<-cohXmei$bandp$mn_coh
+  landXclim.lt$mei.p[ii]<-cohXmei$bandp$p_val
+  landXclim.lt$mei.phi[ii]<-cohXmei$bandp$mn_phs
+  landXclim.lt$nao.coh[ii]<-cohXnao$bandp$mn_coh
+  landXclim.lt$nao.p[ii]<-cohXnao$bandp$p_val
+  landXclim.lt$nao.phi[ii]<-cohXnao$bandp$mn_phs
+  landXclim.lt$pdo.coh[ii]<-cohXpdo$bandp$mn_coh
+  landXclim.lt$pdo.p[ii]<-cohXpdo$bandp$p_val
+  landXclim.lt$pdo.phi[ii]<-cohXpdo$bandp$mn_phs
+  landXclim.lt$ppt.coh[ii]<-cohXppt$bandp$mn_coh
+  landXclim.lt$ppt.p[ii]<-cohXppt$bandp$p_val
+  landXclim.lt$ppt.phi[ii]<-cohXppt$bandp$mn_phs
+  landXclim.lt$tavg.coh[ii]<-cohXtavg$bandp$mn_coh
+  landXclim.lt$tavg.p[ii]<-cohXtavg$bandp$p_val
+  landXclim.lt$tavg.phi[ii]<-cohXtavg$bandp$mn_phs
+}
+
+# test correlation between coherence of lakes and coherence of land
+cor.test(lakeXclim.st$mei.coh,landXclim.st$mei.coh)
+cor.test(lakeXclim.st$nao.coh,landXclim.st$nao.coh)
+cor.test(lakeXclim.st$pdo.coh,landXclim.st$pdo.coh)
+cor.test(lakeXclim.st$ppt.coh,landXclim.st$ppt.coh)
+cor.test(lakeXclim.st$tavg.coh,landXclim.st$tavg.coh)
+# no significant correlations at short timescales
+
+cor.test(lakeXclim.lt$mei.coh,landXclim.lt$mei.coh)
+cor.test(lakeXclim.lt$nao.coh,landXclim.lt$nao.coh)
+cor.test(lakeXclim.lt$pdo.coh,landXclim.lt$pdo.coh)
+cor.test(lakeXclim.lt$ppt.coh,landXclim.lt$ppt.coh)
+cor.test(lakeXclim.lt$tavg.coh,landXclim.lt$tavg.coh)
+# mostly significant correlations at long timescales
 
 ```
+Coherence with climate variables was essentially uncorrelated between lakes and the landscape at short timescales, albeit with a small (n=9) number of lakes.
+However, at long timescales coherence with climate variables tended to be significantly and positively correlated between lakes and the landscape.
 
 Second, find out how much variability in lakes is explained by coherence with the landscape
 ```{r wlms lake v landscape, echo=TRUE, cache=FALSE}
+
+## Short timescales
+
+#2851 - Walloon Lake
+yy<-as.numeric(colnames(coherentlakes.st$lakedata$`2851`))
+dat<-list(cleandat(coherentlakes.st$lakedata$`2851`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.st$lakedata$`2851`[2,],yy,clev=5)$cdat)
+wlm.lakeland.2851<-wlm(dat,yy,1,2,norm="powall")
+syncexpl(wlm.lakeland.2851)
+
 
 ```
 

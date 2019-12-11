@@ -4,8 +4,14 @@
 \alias{cleanAnnualts}
 \title{Clean annual time series of lake and terrestrial NDVI data}
 \usage{
-cleanAnnualts(indat, ymin = 20, maxNA = 2, optim = "chla",
-  timespan = NULL, fill.method = "median")
+cleanAnnualts(
+  indat,
+  ymin = 20,
+  maxNA = 2,
+  optim = "chla",
+  timespan = NULL,
+  fill.method = "median"
+)
 }
 \arguments{
 \item{indat}{an input data list, e.g. output from 'makeLAGOSannualts'}

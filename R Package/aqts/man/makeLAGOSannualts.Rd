@@ -4,9 +4,16 @@
 \alias{makeLAGOSannualts}
 \title{Create annualized time series from the LAGOSNE database}
 \usage{
-makeLAGOSannualts(lakes, tsvars = c("chla"), infovars = NULL,
-  aggfun = "gsmean", timespan = NULL, minmos = 3, minobs = 5,
-  lagosversion = "1.087.1")
+makeLAGOSannualts(
+  lakes,
+  tsvars = c("chla"),
+  infovars = NULL,
+  aggfun = "gsmean",
+  timespan = NULL,
+  minmos = 3,
+  minobs = 5,
+  lagosversion = "1.087.1"
+)
 }
 \arguments{
 \item{lakes}{a numeric vector with entries corresponding to selected \code{lagoslakeid} lake unique identifying codes.}

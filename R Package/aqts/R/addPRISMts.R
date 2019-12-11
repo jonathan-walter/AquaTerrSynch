@@ -5,6 +5,7 @@
 #' 
 #' @param lakelist a list containing \code{lakeinfo} and \code{lakedata}, as output from \code{makeLAGOSannualts}.
 #' @param prismdata a raster stack of annual AVHRR metrics
+#' @param var what variable is being handled? currently, ppt and tmean are accepted.
 #' 
 #' @return \code{addPRISMts} returns an object of class \code{list}. Slots are:
 #' \item{lakeinfo}{A data frame of lake information.}
@@ -21,47 +22,48 @@
 #' 
 #' @export
 
-addAVHRRannualts<-function(lakelist, avhrrdata, buffdist=5000, aggfun="mean"){
+addPRISMts<-function(lakelist, prismdata, var){
   
   library(raster)
   library(rgdal)
   library(sp)
   
+  if(!var %in% c("ppt","tmean")){stop("var must be ppt or tmean")}
+  
   lakeinfo<-lakelist$lakeinfo
   lakedata<-lakelist$lakedata
-  
-  if(length(buffdist)==1){buffdist<-rep(buffdist, nrow(lakelist$lakeinfo))}
-  if(length(buffdist)!=nrow(lakelist$lakeinfo)){
-    stop("length(buffdist) must be 1 or equal to the number of lakes")
-  }
   
   #make lake points 
   lakepts<-SpatialPoints(coords=data.frame(x=lakeinfo$nhd_long,y=lakeinfo$nhd_lat),
                             proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs"))
-  avhrrproj<-crs(avhrrdata)
-  lakepts.prj<-spTransform(lakepts, avhrrproj)
+  prismproj<-crs(prismdata)
+  lakepts.prj<-spTransform(lakepts, prismproj)
   
   
   #loop through lakes and extract AVHRR time series
   for(ii in 1:nrow(lakeinfo)){
-    lakebuffer.ii<-buffer(lakepts.prj[ii,], width=buffdist[ii], dissolve=FALSE)
-    #plot(lakebuffer.ii)
-    avhrrstack.ii<-mask(avhrrdata,lakebuffer.ii)
+    lake.ii<-lakepts.prj[ii,]
+    lakeweather<-prismdata[lake.ii]
+    if(var=="ppt"){
+      df<-data.frame(year=substr(colnames(lakeweather),24,27),
+                     val=as.numeric(lakeweather))
+      df.agg<-aggregate(df$val,list(df$year),FUN="sum")
+    }
+    if(var=="tmean"){
+      df<-data.frame(year=substr(colnames(lakeweather),26,29),
+                     val=as.numeric(lakeweather))
+      df.agg<-aggregate(df$val,list(df$year),FUN="mean")
+    }
     
-    if(!aggfun %in% c("mean","median")){stop("aggfun argument must be 'mean' or 'median'.")}
-    else if(aggfun=="mean"){
-      ts.ii<-cellStats(avhrrstack.ii, mean, na.rm=TRUE)
-    }
-    else if(aggfun=="median"){
-      ts.ii<-cellStats(avhrrstack.ii, median, na.rm=TRUE)
-    }
+    colnames(df.agg)<-c("year","val")
 
     lakeyrs<-lakeinfo$start[ii]:lakeinfo$end[ii]
+    wyrs<-df.agg$year
     ts.out<-rep(NA, length(lakeyrs))
-    ts.out[lakeyrs %in% 1989:2018]<-ts.ii[1989:2018 %in% lakeyrs]
+    ts.out[lakeyrs %in% wyrs]<-df.agg$val[wyrs %in% lakeyrs]
     varnames<-rownames(lakedata[[ii]])
     lakedata[[ii]]<-rbind(lakedata[[ii]],ts.out)
-    rownames(lakedata[[ii]])<-c(varnames,deparse(substitute(avhrrdata)))
+    rownames(lakedata[[ii]])<-c(varnames,deparse(substitute(prismdata)))
     
   }
   return(list(lakeinfo=lakeinfo, lakedata=lakedata))

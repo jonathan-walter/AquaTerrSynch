@@ -1,0 +1,17 @@
+base
+methods
+datasets
+utils
+grDevices
+graphics
+stats
+aqts
+wsyn
+sp
+rgdal
+rgeos
+LAGOSNE
+raster
+dplyr
+viridisLite
+viridis

@@ -4,8 +4,15 @@
 \alias{makeIowaALMannualts}
 \title{Create annualized time series from Iowa ALM data}
 \usage{
-makeIowaALMannualts(almdat, lakechar, getvars, aggfun = "gsmean",
-  timespan = NULL, minmos = 3, minobs = 3)
+makeIowaALMannualts(
+  almdat,
+  lakechar,
+  getvars,
+  aggfun = "gsmean",
+  timespan = NULL,
+  minmos = 3,
+  minobs = 3
+)
 }
 \arguments{
 \item{almdat}{a data frame of Iowa Ambient Lakes Monitoring (ALM) data, typically 'Iowa Synchrony Lakes.csv' on Box}

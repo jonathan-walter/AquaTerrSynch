@@ -4,9 +4,16 @@
 \alias{makeWIDNRannualts}
 \title{Create annualized time series from MN MPCA data}
 \usage{
-makeWIDNRannualts(dir, tsvars = "Chlorophyll.ug.l.", infovars = NULL,
-  aggfun = "gsmean", timespan = NULL, minmos = 3, minobs = 3,
-  lagosversion = "1.087.1")
+makeWIDNRannualts(
+  dir,
+  tsvars = "Chlorophyll.ug.l.",
+  infovars = NULL,
+  aggfun = "gsmean",
+  timespan = NULL,
+  minmos = 3,
+  minobs = 3,
+  lagosversion = "1.087.1"
+)
 }
 \arguments{
 \item{dir}{a file path where the data files are stored}
