@@ -88,6 +88,20 @@ coherentlakes.st<-addPRISMts(coherentlakes.st, tavg, var="tmean")
 coherentlakes.lt<-addPRISMts(coherentlakes.lt, ppt, var="ppt")
 coherentlakes.lt<-addPRISMts(coherentlakes.lt, tavg, var="tmean")
 ```
+Make some maps to see where we are
+```{r mapping, echo=T, cache=T}
+states<-readOGR("~/Box Sync/NSF EAGER Synchrony/Data/statesp020_nolakes.shp")
+getstates<-c("Minnesota", "Iowa", "Wisconsin", "Illinois", "Missouri", "Michigan", "Indiana", "Ohio", "Pennsylvania", "New York", "New Jersey", "Connecticut", "New Hampshire", "Rhode Island", "Massachusetts", "Vermont", "Maine")
+lagosstates<-states[states@data$STATE %in% getstates,]
+
+plot(lagosstates, main="Coherent lakes, short timescales")
+points(coherentlakes.st$lakeinfo$nhd_long, coherentlakes.st$lakeinfo$nhd_lat, pch=16, col="blue")
+
+plot(lagosstates, main="Coherent lakes, long timescales")
+points(coherentlakes.lt$lakeinfo$nhd_long, coherentlakes.lt$lakeinfo$nhd_lat, pch=16, col="blue")
+
+
+```
 
 # Analyses
 
@@ -297,24 +311,227 @@ cor.test(lakeXclim.lt$tavg.coh,landXclim.lt$tavg.coh)
 ```
 Coherence with climate variables was essentially uncorrelated between lakes and the landscape at short timescales, albeit with a small (n=9) number of lakes.
 However, at long timescales coherence with climate variables tended to be significantly and positively correlated between lakes and the landscape.
+```{r biplots, echo=TRUE, cahce=FALSE}
+par(mfrow=c(2,3),mar=c(3.1,3.1,1,1),mgp=c(1.7,0.5,0))
+plot(landXclim.st$mei.coh, lakeXclim.st$mei.coh, xlim=c(0,1), ylim=c(0,1), xlab="land", ylab="lake",main="mei")
+abline(a=0,b=1)
+plot(landXclim.st$nao.coh, lakeXclim.st$nao.coh, xlim=c(0,1), ylim=c(0,1), xlab="land", ylab="lake",main="nao")
+abline(a=0,b=1)
+plot(landXclim.st$pdo.coh, lakeXclim.st$pdo.coh, xlim=c(0,1), ylim=c(0,1), xlab="land", ylab="lake",main="pdo")
+abline(a=0,b=1)
+plot(landXclim.st$ppt.coh, lakeXclim.st$ppt.coh, xlim=c(0,1), ylim=c(0,1), xlab="land", ylab="lake",main="ppt")
+abline(a=0,b=1)
+plot(landXclim.st$tavg.coh, lakeXclim.st$tavg.coh, xlim=c(0,1), ylim=c(0,1), xlab="land", ylab="lake",main="tavg")
+abline(a=0,b=1)
+
+par(mfrow=c(2,3),mar=c(3.1,3.1,1,1),mgp=c(1.7,0.5,0))
+plot(landXclim.lt$mei.coh, lakeXclim.lt$mei.coh, xlim=c(0,1), ylim=c(0,1), xlab="land", ylab="lake",main="mei")
+abline(a=0,b=1)
+plot(landXclim.lt$nao.coh, lakeXclim.lt$nao.coh, xlim=c(0,1), ylim=c(0,1), xlab="land", ylab="lake",main="nao")
+abline(a=0,b=1)
+plot(landXclim.lt$pdo.coh, lakeXclim.lt$pdo.coh, xlim=c(0,1), ylim=c(0,1), xlab="land", ylab="lake",main="pdo")
+abline(a=0,b=1)
+plot(landXclim.lt$ppt.coh, lakeXclim.lt$ppt.coh, xlim=c(0,1), ylim=c(0,1), xlab="land", ylab="lake",main="ppt")
+abline(a=0,b=1)
+plot(landXclim.lt$tavg.coh, lakeXclim.lt$tavg.coh, xlim=c(0,1), ylim=c(0,1), xlab="land", ylab="lake",main="tavg")
+abline(a=0,b=1)
+
+
+```
 
 Second, find out how much variability in lakes is explained by coherence with the landscape
-```{r wlms lake v landscape, echo=TRUE, cache=FALSE}
+```{r wlms lake v landscape, echo=TRUE, cache=TRUE}
 
-## Short timescales
+## Short timescales------------------------------------------------------------
+varexpl.land_v_clim.st<-data.frame(lagoslakeid=names(coherentlakes.st$lakedata),
+                                   varexpl.land=rep(NA, length(names(coherentlakes.st$lakedata))),
+                                   varexpl.clim=rep(NA, length(names(coherentlakes.st$lakedata))))
 
 #2851 - Walloon Lake
 yy<-as.numeric(colnames(coherentlakes.st$lakedata$`2851`))
 dat<-list(cleandat(coherentlakes.st$lakedata$`2851`[1,],yy,clev=5)$cdat,
           cleandat(coherentlakes.st$lakedata$`2851`[2,],yy,clev=5)$cdat)
 wlm.lakeland.2851<-wlm(dat,yy,1,2,norm="powall")
-syncexpl(wlm.lakeland.2851)
+varexpl.land_v_clim.st$varexpl.land[1]<-mean(syncexpl(wlm.lakeland.2851)$syncexpl[syncexpl(wlm.lakeland.2851)$timescales < 4])
 
+#3370 - White Lake
+yy<-as.numeric(colnames(coherentlakes.st$lakedata$`3370`))
+dat<-list(cleandat(coherentlakes.st$lakedata$`3370`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.st$lakedata$`3370`[2,],yy,clev=5)$cdat)
+wlm.lakeland.3370<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.st$varexpl.land[2]<-mean(syncexpl(wlm.lakeland.3370)$syncexpl[syncexpl(wlm.lakeland.3370)$timescales < 4])
+
+#6075 - Fellows Lake
+yy<-as.numeric(colnames(coherentlakes.st$lakedata$`6075`))
+dat<-list(cleandat(coherentlakes.st$lakedata$`6075`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.st$lakedata$`6075`[2,],yy,clev=5)$cdat)
+wlm.lakeland.6075<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.st$varexpl.land[3]<-mean(syncexpl(wlm.lakeland.6075)$syncexpl[syncexpl(wlm.lakeland.6075)$timescales < 4])
+
+#6547 - Lake Moraine
+yy<-as.numeric(colnames(coherentlakes.st$lakedata$`6547`))
+dat<-list(cleandat(coherentlakes.st$lakedata$`6547`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.st$lakedata$`6547`[2,],yy,clev=5)$cdat)
+wlm.lakeland.6547<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.st$varexpl.land[4]<-mean(syncexpl(wlm.lakeland.6547)$syncexpl[syncexpl(wlm.lakeland.6547)$timescales < 4])
+
+#7523 - Annabessacook Lake
+yy<-as.numeric(colnames(coherentlakes.st$lakedata$`7523`))
+dat<-list(cleandat(coherentlakes.st$lakedata$`7523`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.st$lakedata$`7523`[2,],yy,clev=5)$cdat)
+wlm.lakeland.7523<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.st$varexpl.land[5]<-mean(syncexpl(wlm.lakeland.7523)$syncexpl[syncexpl(wlm.lakeland.7523)$timescales < 4])
+
+#28836 - Higginsville Old City Lake
+yy<-as.numeric(colnames(coherentlakes.st$lakedata$`28836`))
+dat<-list(cleandat(coherentlakes.st$lakedata$`28836`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.st$lakedata$`28836`[2,],yy,clev=5)$cdat)
+wlm.lakeland.28836<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.st$varexpl.land[6]<-mean(syncexpl(wlm.lakeland.28836)$syncexpl[syncexpl(wlm.lakeland.28836)$timescales < 4])
+
+#72641 - Lake Wallenpaupack
+yy<-as.numeric(colnames(coherentlakes.st$lakedata$`72641`))
+dat<-list(cleandat(coherentlakes.st$lakedata$`72641`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.st$lakedata$`72641`[2,],yy,clev=5)$cdat)
+wlm.lakeland.72641<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.st$varexpl.land[7]<-mean(syncexpl(wlm.lakeland.72641)$syncexpl[syncexpl(wlm.lakeland.72641)$timescales < 4])
+
+#133500 - Kraut run lake
+yy<-as.numeric(colnames(coherentlakes.st$lakedata$`133500`))
+dat<-list(cleandat(coherentlakes.st$lakedata$`133500`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.st$lakedata$`133500`[2,],yy,clev=5)$cdat)
+wlm.lakeland.133500<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.st$varexpl.land[8]<-mean(syncexpl(wlm.lakeland.133500)$syncexpl[syncexpl(wlm.lakeland.133500)$timescales < 4])
+
+#4909 - Annabelle lake
+yy<-as.numeric(colnames(coherentlakes.st$lakedata$`4909`))
+dat<-list(cleandat(coherentlakes.st$lakedata$`4909`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.st$lakedata$`4909`[2,],yy,clev=5)$cdat)
+wlm.lakeland.4909<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.st$varexpl.land[9]<-mean(syncexpl(wlm.lakeland.4909)$syncexpl[syncexpl(wlm.lakeland.4909)$timescales < 4])
+
+## Long timescales ------------------------------------------------------------
+varexpl.land_v_clim.lt<-data.frame(lagoslakeid=names(coherentlakes.lt$lakedata),
+                                   varexpl.land=rep(NA, length(names(coherentlakes.lt$lakedata))),
+                                   varexpl.clim=rep(NA, length(names(coherentlakes.lt$lakedata))))
+# 3370 - White Lake
+yy<-as.numeric(colnames(coherentlakes.lt$lakedata$`3370`))
+dat<-list(cleandat(coherentlakes.lt$lakedata$`3370`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.lt$lakedata$`3370`[2,],yy,clev=5)$cdat)
+wlm.lakeland.3370<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.lt$varexpl.land[1]<-mean(syncexpl(wlm.lakeland.3370)$syncexpl[syncexpl(wlm.lakeland.3370)$timescales > 4])
+
+# 3834 - Hasbrook Lake
+yy<-as.numeric(colnames(coherentlakes.lt$lakedata$`3834`))
+dat<-list(cleandat(coherentlakes.lt$lakedata$`3834`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.lt$lakedata$`3834`[2,],yy,clev=5)$cdat)
+wlm.lakeland.3834<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.lt$varexpl.land[2]<-mean(syncexpl(wlm.lakeland.3834)$syncexpl[syncexpl(wlm.lakeland.3834)$timescales > 4])
+
+# 4243 - unnamed
+yy<-as.numeric(colnames(coherentlakes.lt$lakedata$`4243`))
+dat<-list(cleandat(coherentlakes.lt$lakedata$`4243`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.lt$lakedata$`4243`[2,],yy,clev=5)$cdat)
+wlm.lakeland.4243<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.lt$varexpl.land[3]<-mean(syncexpl(wlm.lakeland.4243)$syncexpl[syncexpl(wlm.lakeland.4243)$timescales > 4])
+
+# 4416 - Green Lake
+yy<-as.numeric(colnames(coherentlakes.lt$lakedata$`4416`))
+dat<-list(cleandat(coherentlakes.lt$lakedata$`4416`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.lt$lakedata$`4416`[2,],yy,clev=5)$cdat)
+wlm.lakeland.4416<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.lt$varexpl.land[4]<-mean(syncexpl(wlm.lakeland.4416)$syncexpl[syncexpl(wlm.lakeland.4416)$timescales > 4])
+
+# 4434 - Kangaroo Lake
+yy<-as.numeric(colnames(coherentlakes.lt$lakedata$`4434`))
+dat<-list(cleandat(coherentlakes.lt$lakedata$`4434`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.lt$lakedata$`4434`[2,],yy,clev=5)$cdat)
+wlm.lakeland.4434<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.lt$varexpl.land[5]<-mean(syncexpl(wlm.lakeland.4434)$syncexpl[syncexpl(wlm.lakeland.4434)$timescales > 4])
+
+# 5895 - Lake Sunapee
+yy<-as.numeric(colnames(coherentlakes.lt$lakedata$`5895`))
+dat<-list(cleandat(coherentlakes.lt$lakedata$`5895`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.lt$lakedata$`5895`[2,],yy,clev=5)$cdat)
+wlm.lakeland.5895<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.lt$varexpl.land[6]<-mean(syncexpl(wlm.lakeland.5895)$syncexpl[syncexpl(wlm.lakeland.5895)$timescales > 4])
+
+# 6199 - unnamed
+yy<-as.numeric(colnames(coherentlakes.lt$lakedata$`6199`))
+dat<-list(cleandat(coherentlakes.lt$lakedata$`6199`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.lt$lakedata$`6199`[2,],yy,clev=5)$cdat)
+wlm.lakeland.6199<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.lt$varexpl.land[7]<-mean(syncexpl(wlm.lakeland.6199)$syncexpl[syncexpl(wlm.lakeland.6199)$timescales > 4])
+
+# 7523 - Annabessacook Lake
+yy<-as.numeric(colnames(coherentlakes.lt$lakedata$`7523`))
+dat<-list(cleandat(coherentlakes.lt$lakedata$`7523`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.lt$lakedata$`7523`[2,],yy,clev=5)$cdat)
+wlm.lakeland.7523<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.lt$varexpl.land[8]<-mean(syncexpl(wlm.lakeland.7523)$syncexpl[syncexpl(wlm.lakeland.7523)$timescales > 4])
+
+# 8369 - unnamed
+yy<-as.numeric(colnames(coherentlakes.lt$lakedata$`8369`))
+dat<-list(cleandat(coherentlakes.lt$lakedata$`8369`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.lt$lakedata$`8369`[2,],yy,clev=5)$cdat)
+wlm.lakeland.8369<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.lt$varexpl.land[9]<-mean(syncexpl(wlm.lakeland.8369)$syncexpl[syncexpl(wlm.lakeland.8369)$timescales > 4])
+
+# 39489 - Ashokan Reservoir West Basin
+yy<-as.numeric(colnames(coherentlakes.lt$lakedata$`39489`))
+dat<-list(cleandat(coherentlakes.lt$lakedata$`39489`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.lt$lakedata$`39489`[2,],yy,clev=5)$cdat)
+wlm.lakeland.39489<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.lt$varexpl.land[10]<-mean(syncexpl(wlm.lakeland.39489)$syncexpl[syncexpl(wlm.lakeland.39489)$timescales > 4])
+
+# 115040 - Ashokan Reservoir East Basin
+yy<-as.numeric(colnames(coherentlakes.lt$lakedata$`115040`))
+dat<-list(cleandat(coherentlakes.lt$lakedata$`115040`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.lt$lakedata$`115040`[2,],yy,clev=5)$cdat)
+wlm.lakeland.115040<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.lt$varexpl.land[11]<-mean(syncexpl(wlm.lakeland.115040)$syncexpl[syncexpl(wlm.lakeland.115040)$timescales > 4])
+
+# 133500 - Kraut Run Lake
+yy<-as.numeric(colnames(coherentlakes.lt$lakedata$`133500`))
+dat<-list(cleandat(coherentlakes.lt$lakedata$`133500`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.lt$lakedata$`133500`[2,],yy,clev=5)$cdat)
+wlm.lakeland.133500<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.lt$varexpl.land[12]<-mean(syncexpl(wlm.lakeland.133500)$syncexpl[syncexpl(wlm.lakeland.133500)$timescales > 4])
+
+# 14815 - unnamed
+yy<-as.numeric(colnames(coherentlakes.lt$lakedata$`14815`))
+dat<-list(cleandat(coherentlakes.lt$lakedata$`14815`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.lt$lakedata$`14815`[2,],yy,clev=5)$cdat)
+wlm.lakeland.14815<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.lt$varexpl.land[13]<-mean(syncexpl(wlm.lakeland.14815)$syncexpl[syncexpl(wlm.lakeland.14815)$timescales > 4])
+
+# 102115 - Wilkinson Lake
+yy<-as.numeric(colnames(coherentlakes.lt$lakedata$`102115`))
+dat<-list(cleandat(coherentlakes.lt$lakedata$`102115`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.lt$lakedata$`102115`[2,],yy,clev=5)$cdat)
+wlm.lakeland.102115<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.lt$varexpl.land[14]<-mean(syncexpl(wlm.lakeland.102115)$syncexpl[syncexpl(wlm.lakeland.102115)$timescales > 4])
+
+# 5463 - Pearl Lake
+yy<-as.numeric(colnames(coherentlakes.lt$lakedata$`5463`))
+dat<-list(cleandat(coherentlakes.lt$lakedata$`5463`[1,],yy,clev=5)$cdat,
+          cleandat(coherentlakes.lt$lakedata$`5463`[2,],yy,clev=5)$cdat)
+wlm.lakeland.5463<-wlm(dat,yy,1,2,norm="powall")
+varexpl.land_v_clim.lt$varexpl.land[15]<-mean(syncexpl(wlm.lakeland.5463)$syncexpl[syncexpl(wlm.lakeland.5463)$timescales > 4])
 
 ```
 
 Third, find out how much variability in lakes is explained by coherence with variables the landscape is coherent with
 ```{r wlms lake v climate, echo=TRUE, cache=FALSE}
+
+is.coh_land.lt<-landXclim.lt[colnames(landXclim.lt) %in% 
+                               c("lagoslakeid","mei.p","nao.p","pdo.p","ppt.p","tavg.p")]
+is.coh_land.lt$mei.p<-ifelse(is.coh_land.lt$mei.p<0.1,1,0)
+is.coh_land.lt$nao.p<-ifelse(is.coh_land.lt$nao.p<0.1,1,0)
+is.coh_land.lt$pdo.p<-ifelse(is.coh_land.lt$pdo.p<0.1,1,0)
+is.coh_land.lt$ppt.p<-ifelse(is.coh_land.lt$ppt.p<0.1,1,0)
+is.coh_land.lt$tavg.p<-ifelse(is.coh_land.lt$tavg.p<0.1,1,0)
+
 
 ```
 
