@@ -1,4 +1,5 @@
-# Think Piece Analysis and Figures
+# Analysis and Figures for Wilkinson et al. (2020) in Limnology and Oceanography Letters
+# 'Beyond the trends: The need to understand multi-annual dynamics in aquatic ecosystems'
 
 rm(list=ls())
 
@@ -163,7 +164,7 @@ jetcolors <- c("#00007F", "blue", "#007FFF", "cyan",
                "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000")
 colorfill<-grDevices::colorRampPalette(jetcolors)
 
-tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/ThinkPiece/dmr_example.tif",
+tiff("Figure1_Wilkinson_etal_2020_LOLetters.tif",
      units="in", width=6.5, height=5, res=300)
 
 layout(laymat)
@@ -235,17 +236,17 @@ lm2<-lm(ycomp[tt>=12.5 & tt <=17.5] ~ tt[tt>=12.5 & tt<=17.5])
 lm3<-lm(ycomp[tt>=20 & tt<=25] ~ tt[tt>=20 & tt<=25])
 
 
-png("~/Box Sync/NSF EAGER Synchrony/Manuscripts/ThinkPiece/superimposed_signals_v3.png", units="in",
+tiff("Figure2_Wilkinson_etal_2020_LOLetters.tif", units="in",
     height=5, width=3.25, res=300)
 
 par(mfrow=c(4,1), mar=c(2,2,0,1), xpd=F, oma=c(2,2,1,0), mgp=c(1,1,0))
 plot(tt,y1+y2+y3+y4, type="l",xaxt="n", xlab="", yaxt="n", ylab="Integrated",ylim=c(-3,3))
 rect(5,-4,10,4, col="skyblue2", xpd=F, border=NA)
-rect(12.5,-4,17.5,4,col="palegreen2",xpd=F,border=NA)
-rect(20,-4,25,4,col="gold",xpd=F,border=NA)
+rect(12.5,-4,17.5,4,col="darkseagreen2",xpd=F,border=NA)
+rect(20,-4,25,4,col="wheat",xpd=F,border=NA)
 lines(tt,y1+y2+y3+y4)
-lines(tt[tt>=5 & tt<=10], predict(lm1), col="royalblue3", lwd=3)
-lines(tt[tt>=12.5 & tt<=17.5], predict(lm2), col="seagreen", lwd=3)
+lines(tt[tt>=5 & tt<=10], predict(lm1), col="steelblue4", lwd=3)
+lines(tt[tt>=12.5 & tt<=17.5], predict(lm2), col="seagreen4", lwd=3)
 lines(tt[tt>=20 & tt<=25], predict(lm3), col="goldenrod4", lwd=3)
 axis(1,at=c(1,5,10,15,20,25,30),labels=FALSE)
 axis(2,at=pretty(ycomp,5),labels=FALSE, xpd=F)
