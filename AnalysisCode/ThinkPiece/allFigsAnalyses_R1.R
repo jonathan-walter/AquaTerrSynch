@@ -3,68 +3,56 @@
 
 rm(list=ls())
 
-library(lubridate)
+if (!require(wsyn)) install.packages('wsyn')
 library(wsyn)
 
 ##--------------------------------------------------------------
 ## Figure 1: Des Moines River Nitrate
 
-##Data preparation
-
-dat1<-read.csv("~/Box Sync/NSF EAGER Synchrony/Data/Iowa Lakes Data/DesMoinesRiver_Site1_AllData.csv", stringsAsFactors = F)
-dat2<-read.csv("~/Box Sync/NSF EAGER Synchrony/Data/Iowa Lakes Data/ACE_Site1_TempFlow.csv", stringsAsFactors = F)
-
-dat<-rbind(dat1,dat2)
-
-dat$parameter<-rep(NA, nrow(dat))
-
-dat$parameter[dat$PARAM_NUM==4]<-"turbidity_ntu"
-dat$parameter[dat$PARAM_NUM==7]<-"tss_mgL"
-dat$parameter[dat$PARAM_NUM==13]<-"toc_mgL"
-dat$parameter[dat$PARAM_NUM==16]<-"bod_mgL"
-dat$parameter[dat$PARAM_NUM==20]<-"nitrate_mgL"
-dat$parameter[dat$PARAM_NUM==32]<-"tp_mgL"
-dat$parameter[dat$PARAM_NUM==2]<-"flow_"  #Ask Grace about units for flow and temp
-dat$parameter[dat$PARAM_NUM==3]<-"temp_"
-
-
-dat$sampleDate<-as.POSIXct(dat$DATE_OF_SAMPLE, format="%d-%b-%y")
-
-for(ii in 1:nrow(dat)){
-  if(year(dat$sampleDate[ii])==2067){year(dat$sampleDate[ii])<-1967}
-  if(year(dat$sampleDate[ii])==2068){year(dat$sampleDate[ii])<-1968}
-}
-
-params<-c("nitrate_mgL","tss_mgL","flow_","temp_")
-years<-1968:2016
-months<-1:12
-monthyear<-expand.grid(months, years)
-
-param.monthly<-matrix(NA, nrow=length(params), ncol=12*length(years))
-
-for(pp in 1:length(params)){
-  for(yy in 1:length(years)){
-    for(mm in months){
-      param.monthly[pp, which(monthyear$Var1==mm & monthyear$Var2==years[yy])]<-mean(
-        dat$SAMPLE_VALUE[dat$parameter==params[pp] & month(dat$sampleDate)==mm & year(dat$sampleDate)==years[yy]])
-    }
-  }
-}
-
+# Misc objects for ease of analysis
 yy<-1976:2016
 
 dec.time<-seq(1976,2017,by=1/12)
 dec.time<-dec.time[-length(dec.time)]
 
+# Read in the Data from EDI:
+# Package ID: edi.451.2 Cataloging System:https://pasta.edirepository.org.
+# Data set title: Monthly nitrate concentrations in the Des Moines River above Saylorville Reservoir, 1976 - 2016.
+# Data set creator:  Grace Wilkinson - Iowa State University 
+# Data set creator:  William Crumpton - Iowa State University 
+# Data set creator:  Chris Rehmann - Iowa State University 
+# Data set creator:  Benjamin Noack - Iowa State University 
+# Data set creator:  Elena Sandry - Iowa State University 
+# Contact:  Grace Wilkinson -  Iowa State University  - wilkinso@iastate.edu
+# Stylesheet v2.7 for metadata conversion into program: John H. Porter, Univ. Virginia, jporter@virginia.edu 
+
+inUrl1  <- "https://pasta.lternet.edu/package/data/eml/edi/451/2/38b4289ab21b71cbea87b8e3400a3670" 
+infile1 <- tempfile()
+download.file(inUrl1,infile1,method="curl")
+
+dt1 <-read.csv(infile1,header=F 
+               ,skip=1
+               ,sep=","  
+               , col.names=c(
+                 "Year",     
+                 "Month",     
+                 "no3_mgL",     
+                 "flow_cfs"    ), check.names=TRUE)
+
+
+# Fix any interval or ratio columns mistakenly read in as nominal and nominal columns read as numeric or dates read as strings
+if (class(dt1$Month)!="factor") dt1$Month<- as.factor(dt1$Month)
+if (class(dt1$no3_mgL)=="factor") dt1$no3_mgL <-as.numeric(levels(dt1$no3_mgL))[as.integer(dt1$no3_mgL) ]
+if (class(dt1$flow_cfs)=="factor") dt1$flow_cfs <-as.numeric(levels(dt1$flow_cfs))[as.integer(dt1$flow_cfs) ]
+
+
 
 ## Wavelet transforms
-no3<-param.monthly[1,]
-no3<-no3[monthyear$Var2 %in% yy]
+no3<-dt1$no3_mgL
 no3.cln<-cleandat(no3, 1:length(no3), clev=5)$cdat
 wt.no3<-wt(no3.cln,1:length(no3.cln))
 
-flow<-param.monthly[3,]
-flow<-flow[monthyear$Var2 %in% yy]
+flow<-dt1$flow_cfs
 flow.cln<-cleandat(flow, 1:length(flow), clev=5)$cdat
 wt.flow<-wt(flow.cln,1:length(flow.cln))
 
