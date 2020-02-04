@@ -169,17 +169,23 @@ tiff("~/Box Sync/NSF EAGER Synchrony/Manuscripts/ThinkPiece/dmr_example.tif",
 layout(laymat)
 par(mar=c(2.1,3.5,1.1,1.1),oma=c(2.1,0,0,0),mgp=c(2.2,0.8,0))
 
-plot(no3, type="l", xlab="", ylab=expression("NO"[3]*~(mu*"gL"^-1)), col="gray40", xaxt="n")
+plot(no3, type="l", xlab="", ylab=expression("NO"[3]*~(mg~L^-1)), col="gray40", xaxt="n")
 lines((1:length(no3))[dec.time>=1981&dec.time<1990],
       predict(lmx,data.frame(dec.time[dec.time>=1981&dec.time<1990])),col="red", lwd=2)
 axis(1,at=seq(0,500,by=60),labels=seq(1976,2016,by=5))
+legend("topleft", legend="A", bty='n')
+
 plot(flow,type="l", xlab="", ylab="Flow (cfs)", xaxt="n", col="gray40")
 axis(1,at=seq(0,500,by=60),labels=seq(1976,2016,by=5))
+legend("topleft", legend="B", bty='n')
 
 plotmag.JW(wt.no3, xaxs="r", colorbar=F, zlim=c(0,8), ylocs=c(0,6,12,24,48,96,192), ylabs=c(0,0.5,1,2,4,8,16),
            xlocs=seq(0,500,by=60), xlabs=seq(1976,2016,by=5))
+legend("topleft", legend="C", bty='n')
+
 plotmag.JW(wt.flow, xaxs="r", colorbar=F, zlim=c(0,8), ylocs=c(0,6,12,24,48,96,192), ylabs=c(0,0.5,1,2,4,8,16),
            xlocs=seq(0,500,by=60), xlabs=seq(1976,2016,by=5))
+legend("topleft", legend="D", bty='n')
 
 par(mar=c(2.1,2.1,1.1,1.1))
 image(y=seq(0,8,length.out=50),matrix(seq(0,8,length.out=50),nrow=1,ncol=50),xaxt="n",yaxt="n",col=colorfill(50))
