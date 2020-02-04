@@ -18,11 +18,7 @@ dec.time<-dec.time[-length(dec.time)]
 # Read in the Data from EDI:
 # Package ID: edi.451.2 Cataloging System:https://pasta.edirepository.org.
 # Data set title: Monthly nitrate concentrations in the Des Moines River above Saylorville Reservoir, 1976 - 2016.
-# Data set creator:  Grace Wilkinson - Iowa State University 
-# Data set creator:  William Crumpton - Iowa State University 
-# Data set creator:  Chris Rehmann - Iowa State University 
-# Data set creator:  Benjamin Noack - Iowa State University 
-# Data set creator:  Elena Sandry - Iowa State University 
+# Data set creator (lead):  Grace Wilkinson - Iowa State University 
 # Contact:  Grace Wilkinson -  Iowa State University  - wilkinso@iastate.edu
 # Stylesheet v2.7 for metadata conversion into program: John H. Porter, Univ. Virginia, jporter@virginia.edu 
 
