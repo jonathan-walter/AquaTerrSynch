@@ -9,4 +9,3 @@ document("aqts") # this will create a file 'NAMESPACE' and a folder 'man'
 check("aqts")
 install("aqts")
 library("aqts")
-
